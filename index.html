@@ -1,0 +1,2957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Live view total</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231a1a19'/%3E%3Cpath d='M7 22l6-7 5 3 7-9' fill='none' stroke='%233987e5' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --raised: #f0efec;
+  --text: #0b0b0b;
+  --text-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.1);
+  --series: #2a78d6;
+  --s1: #2a78d6;
+  --s2: #eb6834;
+  --s3: #1baf7a;
+  --good: #006300;
+  --live: #0ca30c;
+  --critical: #d03b3b;
+  --btn: #0b0b0b;
+  --btn-text: #fcfcfb;
+  --shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --raised: #262625;
+    --text: #f0efec;
+    --text-2: #c3c2b7;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.1);
+    --series: #3987e5;
+    --s1: #3987e5;
+    --s2: #d95926;
+    --s3: #199e70;
+    --good: #0ca30c;
+    --btn: #f0efec;
+    --btn-text: #1a1a19;
+    --shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  }
+}
+
+* { box-sizing: border-box; }
+
+html {
+  background: var(--page);
+  color: var(--text);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body { margin: 0; }
+
+[hidden] { display: none !important; }
+
+a { color: inherit; }
+
+:focus-visible { outline: 2px solid var(--series); outline-offset: 2px; }
+
+.wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 56px; }
+
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 22px; }
+.who { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--raised); flex: none; }
+h1 { font-size: 18px; font-weight: 650; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sub { margin: 2px 0 0; color: var(--text-2); font-size: 13px; }
+
+.btn { font: inherit; font-size: 13px; color: var(--text); background: transparent; border: 1px solid var(--border); border-radius: 8px; padding: 7px 13px; cursor: pointer; }
+.btn:hover { background: var(--raised); }
+.btn:disabled { opacity: 0.55; cursor: default; }
+.btn.primary { background: var(--btn); color: var(--btn-text); border-color: transparent; font-weight: 600; padding: 8px 18px; }
+.btn.primary:hover { opacity: 0.88; }
+.btn.link { border: 0; padding: 0 2px; color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+.btn.link:hover { background: transparent; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+
+.settings { max-width: 560px; margin-bottom: 18px; }
+.field { display: grid; gap: 6px; margin-bottom: 14px; }
+.field > label { font-size: 13px; font-weight: 500; color: var(--text-2); }
+.row { display: flex; gap: 8px; }
+.row input { flex: 1; min-width: 0; }
+input, select { font: inherit; color: var(--text); background: var(--page); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; width: 100%; }
+select { cursor: pointer; }
+.actions { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+.help { font-size: 12.5px; color: var(--text-2); margin: 14px 0 0; }
+.help + .help { margin-top: 8px; }
+.form-msg { margin: 0 0 12px; padding-left: 10px; border-left: 3px solid var(--critical); font-size: 13px; }
+.export { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+.export .foot { margin: 0; }
+.slink { font-size: 13px; color: var(--text); text-underline-offset: 2px; }
+.chan-row { display: flex; align-items: center; gap: 10px; margin: -6px 0 20px; }
+.chan-row select { width: auto; max-width: 100%; min-width: 0; padding: 7px 10px; font-size: 13px; }
+
+.alert { display: flex; gap: 12px; align-items: flex-start; max-width: 760px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--critical); border-radius: 10px; padding: 12px 14px; margin-bottom: 18px; }
+.alert .icon { flex: none; width: 20px; height: 20px; margin-top: 1px; border-radius: 50%; background: var(--critical); color: #fff; font-size: 13px; font-weight: 700; display: grid; place-items: center; }
+.alert p { margin: 0; }
+.a-title { font-weight: 600; }
+.a-hint { color: var(--text-2); margin-top: 3px !important; }
+.a-raw { color: var(--muted); font-size: 12px; margin-top: 6px !important; word-break: break-word; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; background: var(--raised); padding: 1px 5px; border-radius: 4px; }
+
+.hero { margin: 4px 0 24px; }
+.hero-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 14px; }
+.total { font-size: clamp(56px, 12vw, 96px); font-weight: 650; letter-spacing: -0.03em; line-height: 1; }
+.bump-total { font-size: 20px; font-weight: 600; opacity: 0; }
+.bump-total.up { color: var(--good); }
+.bump-total.down { color: var(--text-2); }
+.bump-total.show { animation: rise 4s ease-out forwards; }
+.hero-label { margin: 8px 0 12px; color: var(--text-2); font-size: 14px; }
+.status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; color: var(--text-2); font-size: 13px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--live); flex: none; }
+.dot.live { animation: pulse 2s ease-in-out infinite; }
+.dot.paused { background: var(--muted); }
+.dot.err { background: var(--critical); }
+
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+.tile.bump { animation: tileflash 1.6s ease-out; }
+.t-label, .t-sub { margin: 0; font-size: 13px; color: var(--text-2); }
+.t-sub { font-size: 12px; }
+.t-value { margin: 4px 0 2px; font-size: 26px; font-weight: 600; }
+.good { color: var(--good); }
+.dim { color: var(--text-2); }
+
+.filters { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 24px 0 10px; }
+.f-label { font-size: 13px; color: var(--text-2); }
+.seg { display: inline-flex; gap: 2px; padding: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: 9px; }
+.seg button { font: inherit; font-size: 13px; color: var(--text-2); background: transparent; border: 0; border-radius: 7px; padding: 5px 12px; cursor: pointer; }
+.seg button:hover { color: var(--text); }
+.seg button[aria-pressed="true"] { background: var(--raised); color: var(--text); font-weight: 600; }
+
+h2 { font-size: 14px; font-weight: 600; margin: 0 0 10px; }
+h2 .count { color: var(--text-2); font-weight: 400; }
+.chart-card { padding-bottom: 10px; }
+.chart { position: relative; border-radius: 6px; }
+.chart svg { display: block; touch-action: pan-y; }
+.chart text { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.chart .empty { fill: var(--text-2); font-size: 13px; }
+.grid { stroke: var(--grid); stroke-width: 1; }
+.axis { stroke: var(--axis); stroke-width: 1; }
+.line { fill: none; stroke: var(--series); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.ring { fill: var(--surface); }
+.mark { fill: var(--series); }
+.xhair { stroke: var(--text-2); stroke-width: 1; opacity: 0.45; }
+.ctx { fill: none; stroke: var(--muted); stroke-width: 1; opacity: 0.35; stroke-linejoin: round; stroke-linecap: round; }
+.med { fill: none; stroke: var(--muted); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.sel { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.sel.s1 { stroke: var(--s1); }
+.sel.s2 { stroke: var(--s2); }
+.sel.s3 { stroke: var(--s3); }
+.fill.s1 { fill: var(--s1); }
+.fill.s2 { fill: var(--s2); }
+.fill.s3 { fill: var(--s3); }
+.fill.medf { fill: var(--muted); }
+.tip { position: absolute; z-index: 2; pointer-events: none; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow); padding: 7px 10px; font-size: 12px; color: var(--text-2); white-space: nowrap; }
+.tip strong { display: block; font-size: 15px; color: var(--text); font-variant-numeric: tabular-nums; }
+.tip .thead { margin-bottom: 4px; }
+.trow { display: flex; align-items: center; gap: 8px; line-height: 1.6; }
+.tip .trow strong { display: inline-block; min-width: 44px; font-size: 13px; text-align: right; }
+.tname { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0 0 8px; font-size: 12.5px; color: var(--text-2); }
+.key { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.kname { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lk { display: inline-block; flex: none; width: 16px; height: 2px; border-radius: 1px; }
+.lk.s1 { background: var(--s1); }
+.lk.s2 { background: var(--s2); }
+.lk.s3 { background: var(--s3); }
+.lk.med { background: var(--muted); }
+.lk.ctx { height: 1px; background: var(--muted); opacity: 0.6; }
+.launch-note { margin: 0 0 10px; font-size: 13px; }
+.foot { margin: 6px 0 0; font-size: 12px; color: var(--text-2); }
+.f-label.gapl { margin-left: 8px; }
+.hsum { margin: 0 0 8px; font-size: 13px; color: var(--text-2); }
+.hsum strong { color: var(--text); font-size: 15px; font-variant-numeric: tabular-nums; }
+.hbar { fill: var(--series); }
+.hbar.est { opacity: 0.35; }
+.hcol { fill: var(--raised); }
+.lk.meas, .lk.est { width: 10px; height: 10px; border-radius: 2px; background: var(--series); }
+.lk.est { opacity: 0.35; }
+.import { display: grid; gap: 8px; max-width: 560px; padding-top: 4px; }
+.import-row input { padding: 6px; }
+textarea { font: 12.5px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); background: var(--page); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; width: 100%; resize: vertical; }
+#hlegend .kname { max-width: none; }
+
+details.data { margin-top: 8px; }
+details.data summary { width: max-content; padding: 4px 0; font-size: 13px; color: var(--text-2); cursor: pointer; }
+.small { font-size: 12.5px; }
+.med-row td { font-weight: 600; }
+.scroll { overflow-x: auto; }
+
+.uploads { margin-top: 16px; }
+table { width: 100%; border-collapse: collapse; }
+th { padding: 6px 8px; border-bottom: 1px solid var(--grid); font-size: 12px; font-weight: 500; color: var(--text-2); text-align: left; white-space: nowrap; }
+td { padding: 8px; border-bottom: 1px solid var(--grid); vertical-align: middle; }
+tbody tr:last-child td { border-bottom: 0; }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pick { width: 32px; padding: 0 0 0 2px; }
+.swatch { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
+.swatch::before { content: ""; box-sizing: border-box; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--muted); }
+.swatch:hover::before { border-color: var(--text-2); }
+.swatch.s1::before { background: var(--s1); border-color: var(--s1); }
+.swatch.s2::before { background: var(--s2); border-color: var(--s2); }
+.swatch.s3::before { background: var(--s3); border-color: var(--s3); }
+.thumb { width: 43px; padding-right: 0; }
+.thumb img { display: block; width: 27px; height: 48px; object-fit: cover; border-radius: 4px; background: var(--raised); }
+.title a { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-decoration: none; }
+.title a:hover { text-decoration: underline; }
+tr.bump td { animation: flash 1.6s ease-out; }
+
+@keyframes pulse { 50% { opacity: 0.35; } }
+@keyframes rise { 0% { opacity: 0; transform: translateY(6px); } 8% { opacity: 1; transform: none; } 75% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes flash { from { background: color-mix(in srgb, var(--series) 16%, transparent); } to { background: transparent; } }
+@keyframes tileflash { from { background: color-mix(in srgb, var(--series) 14%, var(--surface)); } to { background: var(--surface); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .dot.live, tr.bump td, .tile.bump { animation: none; }
+  .bump-total.show { animation: none; opacity: 1; }
+}
+
+@media (max-width: 640px) {
+  .wrap { padding: 20px 14px 40px; }
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pub, .com, .since { display: none; }
+  .uploads td, .uploads th { padding-left: 6px; padding-right: 6px; }
+  .kname { max-width: 150px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="who">
+      <img id="avatar" class="avatar" alt="" hidden>
+      <div>
+        <h1 id="title">Live view total</h1>
+        <p id="subtitle" class="sub">Sum of every public upload's view count, refreshed live</p>
+      </div>
+    </div>
+    <button id="gear" class="btn" type="button" aria-expanded="false" aria-controls="settings" hidden>Settings</button>
+  </header>
+
+  <div id="chanRow" class="chan-row" hidden>
+    <label class="f-label" for="chanPick">Channel</label>
+    <select id="chanPick"></select>
+  </div>
+
+  <div id="alert" class="alert" role="alert" hidden></div>
+
+  <section id="settings" class="card settings" hidden>
+    <form id="form" autocomplete="off">
+      <div class="field">
+        <label for="key">API key</label>
+        <div class="row">
+          <input id="key" type="password" spellcheck="false" autocomplete="off" placeholder="AIza…">
+          <button id="reveal" class="btn" type="button" aria-pressed="false">Show</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="channel">Channel</label>
+        <input id="channel" type="text" spellcheck="false" autocomplete="off" placeholder="@handle, channel URL, or channel ID">
+      </div>
+      <div class="field">
+        <label for="interval">Refresh every</label>
+        <select id="interval"></select>
+      </div>
+      <div class="field">
+        <label for="siteUrl">Recorder dashboard URL</label>
+        <input id="siteUrl" type="url" spellcheck="false" autocomplete="off" placeholder="https://you.github.io/ytracker/">
+      </div>
+      <p id="formMsg" class="form-msg" role="alert" hidden></p>
+      <div class="actions">
+        <button id="start" class="btn primary" type="submit">Start</button>
+        <button id="forget" class="btn" type="button">Forget key</button>
+      </div>
+      <p class="help">Free key: <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener">enable YouTube Data API v3</a>, then <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Credentials</a> → Create credentials → API key. Leave Application restrictions at None, since this page runs as a local file. The key is saved only in this browser.</p>
+      <p class="help">The recorder dashboard URL is your GitHub Pages address. Leave it empty to use the one shown. With it, the charts include everything recorded while this page was closed, and live readings add on top. Leave the key and channel empty to only view the recorded data.</p>
+      <div class="export">
+        <button id="exportBtn" class="btn" type="button">Export history</button>
+        <span id="exportMsg" class="foot" role="status">Saves this browser’s history for the channel shown, as a seed file for the GitHub recorder.</span>
+      </div>
+    </form>
+  </section>
+
+  <main id="live" hidden>
+    <section class="hero" aria-label="All-time views">
+      <div class="hero-row">
+        <span id="total" class="total">–</span>
+        <span id="bump" class="bump-total" aria-hidden="true"></span>
+      </div>
+      <p id="heroLabel" class="hero-label">all-time views</p>
+      <p class="status"><span id="dot" class="dot"></span><span id="statusText">Connecting…</span><a id="statusLink" class="slink" target="_blank" rel="noopener" hidden>Open GitHub Actions</a><button id="refresh" class="btn link" type="button">Refresh now</button></p>
+    </section>
+
+    <section class="tiles">
+      <div id="subsTile" class="tile">
+        <p class="t-label">Subscribers</p>
+        <p id="subsValue" class="t-value">–</p>
+        <p id="subsSub" class="t-sub"></p>
+      </div>
+      <div id="likesTile" class="tile">
+        <p class="t-label">Likes</p>
+        <p id="likesValue" class="t-value">–</p>
+        <p id="likesSub" class="t-sub"></p>
+      </div>
+      <div id="commentsTile" class="tile">
+        <p class="t-label">Comments</p>
+        <p id="commentsValue" class="t-value">–</p>
+        <p id="commentsSub" class="t-sub"></p>
+      </div>
+      <div class="tile">
+        <p id="t1Label" class="t-label">Views, last 60 min</p>
+        <p id="t1Value" class="t-value">–</p>
+        <p id="t1Sub" class="t-sub"></p>
+      </div>
+      <div class="tile">
+        <p class="t-label">YouTube's channel total</p>
+        <p id="t2Value" class="t-value">–</p>
+        <p id="t2Sub" class="t-sub"></p>
+      </div>
+      <div class="tile">
+        <p id="t3Label" class="t-label">API units used today</p>
+        <p id="t3Value" class="t-value">–</p>
+        <p id="t3Sub" class="t-sub">of 10,000 · resets midnight Pacific</p>
+      </div>
+    </section>
+
+    <div class="filters">
+      <span id="rangeLabel" class="f-label">Range</span>
+      <div id="ranges" class="seg" role="group" aria-labelledby="rangeLabel">
+        <button type="button" data-range="1h">1h</button>
+        <button type="button" data-range="6h">6h</button>
+        <button type="button" data-range="24h">24h</button>
+        <button type="button" data-range="all">All</button>
+      </div>
+    </div>
+
+    <section class="card chart-card">
+      <h2>Running total</h2>
+      <div id="chart" class="chart" tabindex="0" role="group" aria-roledescription="chart" aria-describedby="chartHint">
+        <svg id="svg" aria-hidden="true"></svg>
+        <div id="tip" class="tip" role="status" aria-live="polite" hidden></div>
+        <span id="chartHint" class="sr">Use the left and right arrow keys to read each recorded total.</span>
+      </div>
+      <details id="dataDetails" class="data">
+        <summary>Chart data</summary>
+        <div id="dataTable"></div>
+      </details>
+    </section>
+
+    <div class="filters">
+      <span id="hmLabel" class="f-label">Hourly</span>
+      <div id="hmetrics" class="seg" role="group" aria-labelledby="hmLabel">
+        <button type="button" data-hmetric="views">Views</button>
+        <button type="button" data-hmetric="subs">Subscribers</button>
+      </div>
+      <span id="hrLabel" class="f-label gapl">Period</span>
+      <div id="hranges" class="seg" role="group" aria-labelledby="hrLabel">
+        <button type="button" data-hrange="48h">48h</button>
+        <button type="button" data-hrange="7d">7 days</button>
+        <button type="button" data-hrange="all">All</button>
+      </div>
+    </div>
+
+    <section class="card chart-card">
+      <h2 id="hTitle">Views per hour</h2>
+      <p id="hsum" class="hsum"></p>
+      <div id="hlegend" class="legend" hidden>
+        <span class="key"><span class="lk meas"></span><span class="kname">Recorded</span></span>
+        <span class="key"><span class="lk est"></span><span id="estName" class="kname">Estimated (page closed)</span></span>
+      </div>
+      <div id="hchart" class="chart" tabindex="0" role="group" aria-roledescription="chart" aria-describedby="hchartHint">
+        <svg id="hsvg" aria-hidden="true"></svg>
+        <div id="htip" class="tip" role="status" aria-live="polite" hidden></div>
+        <span id="hchartHint" class="sr">Use the left and right arrow keys to read each bar.</span>
+      </div>
+      <p id="hfoot" class="foot"></p>
+      <details id="hourDetails" class="data">
+        <summary>Hourly data</summary>
+        <div id="hourTable" class="scroll"></div>
+      </details>
+      <details id="importDetails" class="data">
+        <summary>Import from YouTube Studio</summary>
+        <div class="import">
+          <p class="foot">Fills in hours from Studio's realtime chart, one line per hour in your local time: <code>2026-11-18 01:00,769</code>. Studio numbers replace this page's numbers for those hours. The current hour is skipped.</p>
+          <p id="importNote" class="foot" hidden>Imports stay in this browser. To add them to the shared dashboard, put the CSV in the studio folder of your GitHub repo.</p>
+          <div class="import-row">
+            <input id="importFile" type="file" accept=".csv,.txt,text/csv,text/plain" aria-label="Choose a CSV file">
+          </div>
+          <textarea id="importText" rows="4" spellcheck="false" placeholder="or paste lines here"></textarea>
+          <div class="actions">
+            <button id="importBtn" class="btn" type="button">Import</button>
+            <button id="importClear" class="btn" type="button">Remove imported</button>
+          </div>
+          <p id="importStatus" class="foot" role="status"></p>
+        </div>
+      </details>
+    </section>
+
+    <div class="filters">
+      <span id="ageLabel" class="f-label">Since upload</span>
+      <div id="ages" class="seg" role="group" aria-labelledby="ageLabel">
+        <button type="button" data-age="1h">First hour</button>
+        <button type="button" data-age="6h">6h</button>
+        <button type="button" data-age="24h">24h</button>
+        <button type="button" data-age="7d">7 days</button>
+      </div>
+    </div>
+
+    <section class="card chart-card">
+      <h2>Launch curves</h2>
+      <p id="launchNote" class="launch-note" hidden></p>
+      <div id="legend" class="legend"></div>
+      <div id="lchart" class="chart" tabindex="0" role="group" aria-roledescription="chart" aria-describedby="lchartHint">
+        <svg id="lsvg" aria-hidden="true"></svg>
+        <div id="ltip" class="tip" role="status" aria-live="polite" hidden></div>
+        <span id="lchartHint" class="sr">Views by time since upload. Use the left and right arrow keys to move along it.</span>
+      </div>
+      <p id="lfoot" class="foot">Uploads are tracked from the moment this page first sees them, so keep it open when you post. Use the dots in the uploads list to highlight up to three.</p>
+      <details id="launchDetails" class="data">
+        <summary>Launch table</summary>
+        <div id="launchTable" class="scroll"></div>
+      </details>
+    </section>
+
+    <section class="card uploads">
+      <h2>Uploads <span id="upCount" class="count"></span></h2>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th class="pick"><span class="sr">Highlight</span></th><th colspan="2">Video</th><th class="pub">Published</th><th class="num">Views</th><th id="sinceHead" class="num since">Since open</th><th class="num">Likes</th><th class="num com">Comments</th></tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const API = 'https://www.googleapis.com/youtube/v3/';
+const LIST_EVERY = 600e3;
+const CHECK_EVERY = 120e3;
+const SUB_EVERY = 60e3;
+const GAP_MAX = 1800e3;
+const DEFAULT_SITE = 'https://jwang2007.github.io/ytracker/';
+const RECORD_EVERY = 600e3;
+const REMOTE_RETRY = 120e3;
+const STALE_AFTER = 2700e3;
+const ENG_IDX = { subs: 2, likes: 3, comments: 4 };
+const HRANGES = { '48h': 48, '7d': 168, all: Infinity };
+const HRANGE_TEXT = { '48h': 'in the last 48 hours', '7d': 'in the last 7 days' };
+const MERGE = [1, 2, 3, 6, 12, 24];
+const LABEL_STEPS = [1, 2, 3, 6, 12, 24, 48, 72, 96, 168, 336, 720];
+const HMETRICS = {
+  views: { noun: 'views', title: 'Views per hour', min: 4, signed: false, foot: 'Built from the public view count, so it can trail Studio during bursts. Kept in this browser for as long as you use the page.' },
+  subs: { noun: 'subscribers', title: 'Subscribers gained per hour', min: 2, signed: true, foot: 'Built from the public subscriber count, checked every minute. Kept in this browser for as long as you use the page.' }
+};
+const HIST_STEP = 300e3;
+const HIST_MAX = 5000;
+const VH_MAX = 1500;
+const ANCHOR_MAX = 1800;
+const SAMPLES = 120;
+const RANGES = { '1h': 3600e3, '6h': 21600e3, '24h': 86400e3, all: Infinity };
+const RANGE_TEXT = { '1h': 'last hour', '6h': 'last 6 hours', '24h': 'last 24 hours', all: 'all recorded history' };
+const AGES = { '1h': 3600, '6h': 21600, '24h': 86400, '7d': 604800 };
+const AGE_TICKS = { '1h': 600, '6h': 3600, '24h': 14400, '7d': 86400 };
+const AGE_TEXT = { '1h': 'first hour', '6h': 'first 6 hours', '24h': 'first 24 hours', '7d': 'first 7 days' };
+const MILESTONES = [600, 3600, 21600, 86400, 604800];
+const INTERVALS = [15, 30, 60, 120];
+const X_STEPS = [60e3, 120e3, 300e3, 600e3, 900e3, 1800e3, 3600e3, 7200e3, 10800e3, 21600e3, 43200e3, 86400e3, 172800e3, 604800e3];
+const LINK_LIB = 'https://console.cloud.google.com/apis/library/youtube.googleapis.com';
+const LINK_CRED = 'https://console.cloud.google.com/apis/credentials';
+const DEFAULT_SUB = "Sum of every public upload's view count, refreshed live";
+const SVGNS = 'http://www.w3.org/2000/svg';
+
+const $ = id => document.getElementById(id);
+const nf = new Intl.NumberFormat();
+const fmt = n => nf.format(Math.round(n));
+const count = x => (x == null || x === '' ? null : Number(x));
+const signed = n => (n > 0 ? '+' : n < 0 ? '−' : '') + fmt(Math.abs(n));
+const clock = t => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+const clockSec = t => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+const stamp = t => new Date(t).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' });
+const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const fileName = () => decodeURIComponent(location.pathname.split('/').pop() || 'live-view-counter.html');
+const graphemes = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null;
+
+function dateOnly(t) {
+  if (!t) return '';
+  const d = new Date(t);
+  const opts = { month: 'short', day: 'numeric' };
+  if (d.getFullYear() !== new Date().getFullYear()) opts.year = 'numeric';
+  return d.toLocaleDateString([], opts);
+}
+
+function shorten(text, n) {
+  const parts = graphemes ? [...graphemes.segment(text)].map(x => x.segment) : Array.from(text);
+  return parts.length > n ? parts.slice(0, n - 1).join('').trimEnd() + '…' : text;
+}
+
+function ageTick(sec, days) {
+  if (sec === 0) return '0';
+  if (sec < 3600) return `${Math.round(sec / 60)}m`;
+  if (sec < (days ? 86400 : 172800)) return `${Math.round(sec / 3600)}h`;
+  return `${Math.round(sec / 86400)}d`;
+}
+
+function ageText(sec) {
+  const t = Math.max(0, Math.round(sec));
+  if (t < 3600) return `${Math.round(t / 60)}m`;
+  if (t < 172800) {
+    const hh = Math.floor(t / 3600);
+    const mm = Math.floor((t % 3600) / 60);
+    return mm ? `${hh}h ${mm}m` : `${hh}h`;
+  }
+  const d = Math.floor(t / 86400);
+  const hh = Math.floor((t % 86400) / 3600);
+  return hh ? `${d}d ${hh}h` : `${d}d`;
+}
+
+function median(xs) {
+  const a = xs.slice().sort((x, y) => x - y);
+  const m = a.length >> 1;
+  return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+}
+
+function h(tag, props, ...kids) {
+  const n = document.createElement(tag);
+  for (const k in props || {}) n.setAttribute(k, props[k]);
+  n.append(...kids.flat());
+  return n;
+}
+
+function s(tag, attrs, parent) {
+  const n = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  parent.appendChild(n);
+  return n;
+}
+
+const store = {
+  get(k, fallback) {
+    try {
+      const v = localStorage.getItem(k);
+      return v == null ? fallback : JSON.parse(v);
+    } catch {
+      return fallback;
+    }
+  },
+  set(k, v) {
+    try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
+  },
+  del(k) {
+    try { localStorage.removeItem(k); } catch {}
+  }
+};
+
+const S = {
+  gen: 0,
+  cfg: null,
+  range: 'all',
+  age: '24h',
+  channel: null,
+  videos: new Map(),
+  rows: new Map(),
+  known: new Set(),
+  sel: { auto: true, ids: [] },
+  hist: [],
+  total: null,
+  likes: null,
+  comments: null,
+  likesBase: null,
+  commentsBase: null,
+  subsBase: null,
+  eng: { likes: null, comments: null, subs: null },
+  shown: null,
+  sessionStart: 0,
+  lastSubs: 0,
+  lastPoll: 0,
+  lastList: 0,
+  lastCheck: 0,
+  prevPoll: 0,
+  prevTotal: null,
+  nextAt: 0,
+  timer: 0,
+  busy: false,
+  paused: '',
+  fails: 0,
+  note: '',
+  okOnce: false,
+  geom: null,
+  hv: null,
+  hoverOn: false,
+  hoverT: 0,
+  hoverIdx: -1,
+  hoverLast: false,
+  lgeom: null,
+  lhv: null,
+  lhoverOn: false,
+  lhoverIdx: SAMPLES,
+  hourly: { views: null, subs: null },
+  hrange: 'all',
+  hmetric: 'views',
+  hgeom: null,
+  hhoverOn: false,
+  hhoverIdx: 0,
+  raf: 0,
+  bumpTimer: 0,
+  site: '',
+  chans: [],
+  pick: '',
+  remoteFor: '',
+  remote: null,
+  remoteErr: '',
+  remoteBusy: false,
+  remoteDue: false,
+  remoteTimer: 0,
+  rgen: 0
+};
+
+class ApiError extends Error {
+  constructor(message, kind, reasons = []) {
+    super(message);
+    this.kind = kind;
+    this.reasons = reasons;
+  }
+}
+
+function ptDay() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+}
+
+function unitsToday() {
+  const q = store.get('ytlive.units', null);
+  return q && q.day === ptDay() ? q.used : 0;
+}
+
+function addUnits(n) {
+  store.set('ytlive.units', { day: ptDay(), used: unitsToday() + n });
+}
+
+async function api(path, params) {
+  const url = new URL(API + path);
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+  url.searchParams.set('key', S.cfg.key);
+  let res;
+  try {
+    res = await fetch(url, { cache: 'no-store' });
+  } catch {
+    throw new ApiError('Network request failed.', 'network');
+  }
+  addUnits(1);
+  let body = null;
+  try { body = await res.json(); } catch {}
+  if (res.ok && body) {
+    S.okOnce = true;
+    return body;
+  }
+  const e = (body && body.error) || {};
+  const reasons = [...(e.errors || []).map(x => x.reason), ...(e.details || []).map(x => x.reason), e.status].filter(Boolean);
+  const message = String(e.message || `HTTP ${res.status}`).replace(/<[^>]*>/g, '');
+  const has = (...r) => r.some(x => reasons.includes(x));
+  let kind = 'other';
+  if (has('quotaExceeded', 'dailyLimitExceeded')) kind = 'quota';
+  else if (has('API_KEY_INVALID', 'keyInvalid', 'keyExpired', 'API_KEY_EXPIRED') || /api key (not valid|expired)/i.test(message)) kind = 'key';
+  else if (has('SERVICE_DISABLED', 'accessNotConfigured')) kind = 'disabled';
+  else if (has('API_KEY_HTTP_REFERRER_BLOCKED') || /referr?er/i.test(message)) kind = 'referrer';
+  else if (has('API_KEY_SERVICE_BLOCKED', 'API_KEY_IP_ADDRESS_BLOCKED', 'API_KEY_ANDROID_APP_BLOCKED', 'API_KEY_IOS_APP_BLOCKED')) kind = 'blocked';
+  else if (has('playlistNotFound')) kind = 'noplaylist';
+  else if (res.status >= 500 || res.status === 429 || has('rateLimitExceeded', 'userRateLimitExceeded', 'backendError')) kind = 'server';
+  throw new ApiError(message, kind, reasons);
+}
+
+function parseChannel(raw) {
+  const text = raw.trim();
+  const id = text.match(/(?:^|\/channel\/)(UC[\w-]{22})(?=$|[/?#])/);
+  if (id) return { id: id[1] };
+  const url = text.match(/youtube\.com\/@([^/?#\s]+)/i);
+  let handle = url ? url[1] : text.replace(/^@/, '');
+  try { handle = decodeURIComponent(handle); } catch {}
+  return { handle };
+}
+
+function seconds(iso) {
+  const m = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(iso || '');
+  return m ? (+m[1] || 0) * 86400 + (+m[2] || 0) * 3600 + (+m[3] || 0) * 60 + (+m[4] || 0) : Infinity;
+}
+
+async function loadChannel() {
+  const p = parseChannel(S.cfg.channel);
+  const params = { part: 'snippet,contentDetails,statistics' };
+  if (p.id) params.id = p.id;
+  else params.forHandle = '@' + p.handle;
+  const r = await api('channels', params);
+  const c = r.items && r.items[0];
+  if (!c) throw new ApiError(`No channel found for “${S.cfg.channel.trim()}”.`, 'notfound');
+  const sn = c.snippet || {};
+  const th = sn.thumbnails || {};
+  const rel = (c.contentDetails && c.contentDetails.relatedPlaylists) || {};
+  return {
+    id: c.id,
+    title: sn.title || c.id,
+    avatar: (th.default || th.medium || th.high || {}).url || '',
+    uploads: rel.uploads || 'UU' + c.id.slice(2),
+    ...channelStats(c.statistics)
+  };
+}
+
+function channelStats(st) {
+  const x = st || {};
+  return {
+    statTotal: Number(x.viewCount || 0),
+    subs: x.hiddenSubscriberCount ? null : count(x.subscriberCount),
+    hiddenSubs: !!x.hiddenSubscriberCount,
+    checked: Date.now()
+  };
+}
+
+async function fetchChannelStats() {
+  const r = await api('channels', { part: 'statistics', id: S.channel.id });
+  const c = r.items && r.items[0];
+  return c ? channelStats(c.statistics) : null;
+}
+
+async function loadUploadIds(playlistId, limit) {
+  const ids = [];
+  let pageToken = '';
+  try {
+    do {
+      const params = { part: 'contentDetails', playlistId, maxResults: limit || 50 };
+      if (pageToken) params.pageToken = pageToken;
+      const r = await api('playlistItems', params);
+      for (const it of r.items || []) if (it.contentDetails && it.contentDetails.videoId) ids.push(it.contentDetails.videoId);
+      pageToken = limit ? '' : r.nextPageToken || '';
+    } while (pageToken && ids.length < 20000);
+  } catch (e) {
+    if (e.kind === 'noplaylist') return [];
+    throw e;
+  }
+  return [...new Set(ids)];
+}
+
+async function loadVideos(ids, full) {
+  const chunks = [];
+  for (let i = 0; i < ids.length; i += 50) chunks.push(ids.slice(i, i + 50));
+  const part = full ? 'snippet,statistics,contentDetails' : 'statistics';
+  const pages = await Promise.all(chunks.map(c => api('videos', { part, id: c.join(',') })));
+  return pages.flatMap(r => r.items || []);
+}
+
+async function fetchFull() {
+  const ch = await loadChannel();
+  const ids = await loadUploadIds(ch.uploads);
+  const items = ids.length ? await loadVideos(ids, true) : [];
+  return { ch, ids, items };
+}
+
+function fetchStats() {
+  const ids = [...S.videos.keys()];
+  return ids.length ? loadVideos(ids, false) : Promise.resolve([]);
+}
+
+async function newUploadWaiting() {
+  const ids = await loadUploadIds(S.channel.uploads, 10);
+  return ids.some(id => !S.known.has(id));
+}
+
+function loadHist(id) {
+  const raw = store.get('ytlive.hist.' + id, []);
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(p => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1])).sort((a, b) => a[0] - b[0]);
+}
+
+function loadVideoHist(chId, id) {
+  const raw = store.get(`ytlive.vh.${chId}.${id}`, []);
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(p => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1])).sort((a, b) => a[0] - b[0]);
+}
+
+function loadSel(chId) {
+  const raw = store.get('ytlive.sel.' + chId, null);
+  if (!raw || !Array.isArray(raw.ids)) return { auto: true, ids: [] };
+  const ids = raw.ids.filter(x => Array.isArray(x) && typeof x[0] === 'string' && [0, 1, 2].includes(x[1])).slice(0, 3);
+  return { auto: !!raw.auto, ids };
+}
+
+function saveSel() {
+  if (S.channel) store.set('ytlive.sel.' + S.channel.id, S.sel);
+}
+
+function syncSel() {
+  if (S.sel.auto) {
+    let newest = null;
+    for (const v of S.videos.values()) if (!newest || v.published > newest.published) newest = v;
+    S.sel.ids = newest ? [[newest.id, 0]] : [];
+  } else {
+    S.sel.ids = S.sel.ids.filter(x => S.videos.has(x[0]));
+  }
+}
+
+function slotOf(id) {
+  const x = S.sel.ids.find(y => y[0] === id);
+  return x ? x[1] : -1;
+}
+
+function toggleSel(id) {
+  if (!S.channel || !S.videos.has(id)) return;
+  const ids = S.sel.ids;
+  const i = ids.findIndex(x => x[0] === id);
+  if (i >= 0) {
+    ids.splice(i, 1);
+  } else {
+    if (ids.length >= 3) ids.shift();
+    const used = new Set(ids.map(x => x[1]));
+    ids.push([id, [0, 1, 2].find(k => !used.has(k))]);
+  }
+  S.sel.auto = false;
+  saveSel();
+  renderTable();
+  renderLaunchAll();
+}
+
+function commitFull({ ch, ids, items }) {
+  if (!S.channel || S.channel.id !== ch.id) {
+    S.hist = loadHist(ch.id);
+    S.sel = loadSel(ch.id);
+    S.hourly = { views: loadHourly(ch.id, 'views', S.hist), subs: loadHourly(ch.id, 'subs', null) };
+  }
+  S.channel = ch;
+  S.known = new Set(ids);
+  const seen = new Set();
+  for (const it of items) {
+    const sn = it.snippet || {};
+    const th = sn.thumbnails || {};
+    const st = it.statistics || {};
+    const views = Number(st.viewCount || 0);
+    const published = Date.parse(sn.publishedAt) || 0;
+    let v = S.videos.get(it.id);
+    if (!v) {
+      v = { id: it.id, hist: loadVideoHist(ch.id, it.id), dirty: false, base: published > S.sessionStart ? 0 : views };
+      S.videos.set(it.id, v);
+    }
+    Object.assign(v, {
+      title: sn.title || it.id,
+      published,
+      thumb: (th.medium || th.default || th.high || {}).url || '',
+      short: seconds(it.contentDetails && it.contentDetails.duration) <= 180,
+      views,
+      likes: count(st.likeCount),
+      comments: count(st.commentCount)
+    });
+    seen.add(it.id);
+  }
+  for (const id of [...S.videos.keys()]) if (!seen.has(id)) S.videos.delete(id);
+  S.lastList = Date.now();
+  S.lastCheck = S.lastList;
+  S.lastSubs = S.lastList;
+  syncSel();
+}
+
+function commitStats(items) {
+  for (const it of items) {
+    const v = S.videos.get(it.id);
+    if (!v) continue;
+    const st = it.statistics || {};
+    v.views = Number(st.viewCount || 0);
+    v.likes = count(st.likeCount);
+    v.comments = count(st.commentCount);
+  }
+}
+
+function record(total, now) {
+  const h0 = S.hist;
+  const last = h0[h0.length - 1];
+  if (last && last[1] === total && now - last[0] < HIST_STEP) return;
+  if (last && last[1] !== total && S.prevPoll > last[0] && S.prevTotal === last[1]) h0.push([S.prevPoll, last[1]]);
+  h0.push([now, total]);
+  if (h0.length > HIST_MAX) {
+    const half = h0.length >> 1;
+    S.hist = h0.slice(0, half).filter((_, i) => i % 2 === 0).concat(h0.slice(half));
+  }
+  store.set('ytlive.hist.' + S.channel.id, S.hist);
+}
+
+function recordVideo(v, now) {
+  if (!v.published) return;
+  const age = Math.max(0, Math.round((now - v.published) / 1000));
+  let pts = v.hist;
+  if (!pts.length && age <= ANCHOR_MAX) pts.push([0, 0]);
+  const n = pts.length;
+  if (n && age <= pts[n - 1][0]) {
+    if (age === pts[n - 1][0] && pts[n - 1][1] !== v.views) {
+      pts[n - 1] = [age, v.views];
+      v.dirty = true;
+    }
+    return;
+  }
+  const gap = Math.max(S.cfg.interval, age / 40);
+  if (n >= 2 && age - pts[n - 2][0] < gap) pts[n - 1] = [age, v.views];
+  else pts.push([age, v.views]);
+  if (pts.length > VH_MAX) {
+    const half = pts.length >> 1;
+    pts = pts.slice(0, half).filter((_, i) => i === 0 || i % 2 === 0).concat(pts.slice(half));
+  }
+  v.hist = pts;
+  v.dirty = true;
+}
+
+function saveVideoHists() {
+  for (const v of S.videos.values()) {
+    if (!v.dirty) continue;
+    store.set(`ytlive.vh.${S.channel.id}.${v.id}`, v.hist);
+    v.dirty = false;
+  }
+}
+
+async function cycle(forceList) {
+  if (S.busy || !S.cfg || S.paused) return;
+  const gen = S.gen;
+  S.busy = true;
+  clearTimeout(S.timer);
+  renderStatus();
+  try {
+    let full = forceList || !S.lastList || Date.now() - S.lastList >= LIST_EVERY;
+    if (!full && S.channel && Date.now() - S.lastCheck >= CHECK_EVERY) {
+      S.lastCheck = Date.now();
+      full = await newUploadWaiting();
+      if (gen !== S.gen) return;
+    }
+    const subsDue = !full && S.channel && Date.now() - S.lastSubs >= SUB_EVERY;
+    const [data, chStats] = await Promise.all([full ? fetchFull() : fetchStats(), subsDue ? fetchChannelStats() : null]);
+    if (gen !== S.gen) return;
+    if (full) commitFull(data);
+    else commitStats(data);
+    if (chStats) {
+      Object.assign(S.channel, chStats);
+      S.lastSubs = Date.now();
+    }
+    const now = Date.now();
+    let total = 0;
+    let likes = 0;
+    let comments = 0;
+    for (const v of S.videos.values()) {
+      total += v.views;
+      likes += v.likes || 0;
+      comments += v.comments || 0;
+    }
+    const before = S.total;
+    S.total = total;
+    S.likes = likes;
+    S.comments = comments;
+    if (S.likesBase == null) {
+      S.likesBase = likes;
+      S.commentsBase = comments;
+    }
+    if (S.subsBase == null && S.channel.subs != null) S.subsBase = S.channel.subs;
+    record(total, now);
+    updateHourly('views', now, total);
+    updateHourly('subs', S.channel.checked, S.channel.subs);
+    for (const v of S.videos.values()) recordVideo(v, now);
+    saveVideoHists();
+    S.prevPoll = now;
+    S.prevTotal = total;
+    S.lastPoll = now;
+    S.fails = 0;
+    S.note = '';
+    hideAlert();
+    if (before == null) reveal();
+    renderAll(before);
+    schedule(S.cfg.interval * 1000);
+    ensureRemote();
+  } catch (e) {
+    if (gen === S.gen) onError(e);
+  } finally {
+    if (gen === S.gen) {
+      S.busy = false;
+      renderStatus();
+      $('start').disabled = false;
+      $('start').textContent = 'Start';
+    }
+  }
+}
+
+function schedule(ms) {
+  clearTimeout(S.timer);
+  S.nextAt = Date.now() + ms;
+  S.timer = setTimeout(() => cycle(false), ms);
+}
+
+function onError(e) {
+  const kind = e.kind || 'other';
+  if (kind === 'server' || (kind === 'network' && S.okOnce)) {
+    S.fails += 1;
+    S.note = kind === 'network' ? 'couldn’t reach YouTube' : 'YouTube API error';
+    schedule(Math.min(300, S.cfg.interval * 2 ** Math.min(S.fails, 4)) * 1000);
+    if (S.total == null) showAlert(kind, e.message);
+    return;
+  }
+  clearTimeout(S.timer);
+  S.paused = kind;
+  S.nextAt = 0;
+  showAlert(kind, e.message);
+  if (S.total == null || !['quota', 'other'].includes(kind)) openSettings(true);
+}
+
+class RemoteError extends Error {
+  constructor(kind) {
+    super(kind);
+    this.kind = kind;
+  }
+}
+
+function slug(x) {
+  return String(x || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function normSite(raw) {
+  let u;
+  try {
+    u = new URL(raw);
+  } catch {
+    return '';
+  }
+  if (!/^https?:$/.test(u.protocol)) return '';
+  u.search = '';
+  u.hash = '';
+  u.pathname = u.pathname.replace(/\/data\/[^/]*$/, '/').replace(/\/[^/]*\.(?:json|html?)$/i, '/');
+  if (!u.pathname.endsWith('/')) u.pathname += '/';
+  return u.href;
+}
+
+function autoSite() {
+  return /^https?:$/.test(location.protocol) ? normSite(location.href) : '';
+}
+
+function siteUrl() {
+  return S.site || autoSite() || DEFAULT_SITE;
+}
+
+function loadSite() {
+  const u = store.get('ytlive.site', '');
+  return typeof u === 'string' ? normSite(u) : '';
+}
+
+function actionsUrl() {
+  let u;
+  try {
+    u = new URL(siteUrl());
+  } catch {
+    return '';
+  }
+  const m = u.hostname.match(/^([\w-]+)\.github\.io$/i);
+  if (!m) return '';
+  const seg = u.pathname.split('/').filter(Boolean);
+  return `https://github.com/${m[1]}/${seg.length ? seg[0] : m[1] + '.github.io'}/actions`;
+}
+
+function prepIndex(d) {
+  if (!d || d.v !== 1 || !Array.isArray(d.channels)) throw new RemoteError('format');
+  const list = d.channels
+    .filter(c => c && typeof c.id === 'string' && /^[\w-]+$/.test(c.id))
+    .map(c => ({ id: c.id, title: String(c.title || c.id), handle: typeof c.handle === 'string' ? c.handle : '' }));
+  if (!list.length) throw new RemoteError('missing');
+  return list;
+}
+
+function chooseChannel(list) {
+  let want = '';
+  try {
+    want = new URLSearchParams(location.search).get('c') || '';
+  } catch {}
+  want = want || S.pick || store.get('ytlive.pick', '');
+  const n = slug(want);
+  return list.find(c => c.id === want) || (n && list.find(c => slug(c.handle) === n || slug(c.title) === n)) || list[0];
+}
+
+function chanOptions() {
+  const list = S.chans.slice();
+  if (S.cfg && S.channel && !list.some(c => c.id === S.channel.id)) list.unshift({ id: S.channel.id, title: S.channel.title, handle: '' });
+  return list;
+}
+
+function pickChannel(id) {
+  const c = chanOptions().find(x => x.id === id);
+  if (!c) return;
+  S.pick = id;
+  store.set('ytlive.pick', id);
+  try {
+    const u = new URL(location.href);
+    u.searchParams.set('c', slug(c.handle) || id);
+    history.replaceState(null, '', u);
+  } catch {}
+  if (S.cfg) {
+    if (S.channel && S.channel.id === id) return;
+    S.cfg = { ...S.cfg, channel: id };
+    store.set('ytlive.cfg', S.cfg);
+    start(true);
+    return;
+  }
+  S.remote = null;
+  S.remoteErr = '';
+  startView(true);
+}
+
+function renderChanPick() {
+  const list = chanOptions();
+  const show = list.length > 1;
+  $('chanRow').hidden = !show;
+  if (!show) return;
+  const sel = $('chanPick');
+  const sig = list.map(c => c.id + '\u0001' + c.title).join('\u0002');
+  if (sel.dataset.sig !== sig) {
+    sel.replaceChildren(...list.map(c => h('option', { value: c.id }, c.title)));
+    sel.dataset.sig = sig;
+  }
+  sel.value = S.cfg ? (S.channel ? S.channel.id : S.pick) : S.remote ? S.remote.channel.id : S.remoteFor;
+}
+
+function ensureRemote() {
+  if (!siteUrl() || S.remoteBusy || !S.channel || S.remoteFor === S.channel.id) return;
+  fetchRemote(true);
+}
+
+function agoText(ms) {
+  const m = Math.max(0, Math.round(ms / 60e3));
+  if (m < 1) return 'under a minute';
+  if (m < 60) return `${m} min`;
+  const hh = Math.floor(m / 60);
+  if (hh < 6 && m % 60) return `${hh} h ${m % 60} min`;
+  if (hh < 48) return `${hh} h`;
+  return `${Math.floor(hh / 24)} days`;
+}
+
+async function getJson(url) {
+  const u = new URL(url, location.href);
+  u.searchParams.set('t', String(Date.now()));
+  let res;
+  try {
+    res = await fetch(u, { cache: 'no-store' });
+  } catch {
+    throw new RemoteError('network');
+  }
+  if (!res.ok) throw new RemoteError(res.status === 404 ? 'missing' : 'network');
+  try {
+    return await res.json();
+  } catch {
+    throw new RemoteError('format');
+  }
+}
+
+function prepRemote(d) {
+  const num = Number.isFinite;
+  const https = x => (typeof x === 'string' && /^https:\/\//.test(x) ? x : '');
+  if (!d || d.v !== 1 || !d.channel || typeof d.channel.id !== 'string' || !d.latest || !Array.isArray(d.latest.videos)) throw new RemoteError('format');
+  const L = d.latest;
+  const videos = [];
+  for (const r of L.videos) {
+    if (!Array.isArray(r) || typeof r[0] !== 'string') continue;
+    videos.push({
+      id: r[0],
+      title: String(r[1] || r[0]),
+      thumb: https(r[2]),
+      published: num(r[3]) ? r[3] : 0,
+      short: !!r[4],
+      views: num(r[5]) ? r[5] : 0,
+      likes: num(r[6]) ? r[6] : null,
+      comments: num(r[7]) ? r[7] : null
+    });
+  }
+  const samples = (Array.isArray(d.samples) ? d.samples : []).filter(x => Array.isArray(x) && num(x[0]) && num(x[1])).sort((a, b) => a[0] - b[0]);
+  const hourly = {};
+  for (const key of ['views', 'subs']) {
+    const src = (d.hourly && d.hourly[key]) || {};
+    const H = { first: null, last: null, map: new Map() };
+    for (const b of Array.isArray(src.buckets) ? src.buckets : []) {
+      if (!Array.isArray(b) || !num(b[0]) || !num(b[1]) || !num(b[2])) continue;
+      const hs = hourFloor(b[0]);
+      const cur = H.map.get(hs);
+      if (cur) {
+        cur[1] += b[1];
+        cur[2] += b[2];
+      } else {
+        H.map.set(hs, [hs, b[1], b[2], null]);
+      }
+    }
+    if (Array.isArray(src.last) && num(src.last[0]) && num(src.last[1])) H.last = [src.last[0], src.last[1]];
+    if (Array.isArray(src.first) && num(src.first[0])) H.first = [src.first[0], num(src.first[1]) ? src.first[1] : null];
+    hourly[key] = H;
+  }
+  const studio = new Map();
+  for (const x of Array.isArray(d.studio) ? d.studio : []) if (Array.isArray(x) && num(x[0]) && num(x[1])) studio.set(hourFloor(x[0]), x[1]);
+  const vh = new Map();
+  for (const [id, pts] of Object.entries(d.vh && typeof d.vh === 'object' ? d.vh : {})) {
+    if (!Array.isArray(pts)) continue;
+    const clean = pts.filter(p => Array.isArray(p) && num(p[0]) && num(p[1])).sort((a, b) => a[0] - b[0]);
+    if (clean.length) vh.set(id, clean);
+  }
+  const ch = d.channel;
+  const t = num(L.t) ? L.t : num(d.updated) ? d.updated : Date.now();
+  return {
+    updated: num(d.updated) ? d.updated : t,
+    channel: { id: ch.id, title: String(ch.title || ch.id), avatar: https(ch.avatar), uploads: String(ch.uploads || '') },
+    latest: { t, statTotal: num(L.statTotal) ? L.statTotal : 0, subs: num(L.subs) ? L.subs : null, hiddenSubs: !!L.hiddenSubs, videos },
+    samples,
+    hist: samples.map(x => [x[0], x[1]]),
+    hourly,
+    studio,
+    vh
+  };
+}
+
+function remoteFor() {
+  const R = S.remote;
+  return R && S.channel && R.channel.id === S.channel.id ? R : null;
+}
+
+function scheduleRemote() {
+  clearTimeout(S.remoteTimer);
+  if (!siteUrl()) return;
+  let ms = S.remoteErr === 'missing' ? RECORD_EVERY : REMOTE_RETRY;
+  if (S.remote && !S.remoteErr) {
+    const now = Date.now();
+    const due = S.remote.updated + RECORD_EVERY + 90e3 - now;
+    ms = due >= 60e3 ? Math.min(due, RECORD_EVERY) : now - S.remote.updated > 3600e3 ? 300e3 : REMOTE_RETRY;
+  }
+  S.remoteTimer = setTimeout(() => fetchRemote(false), ms);
+}
+
+async function fetchRemote(manual) {
+  clearTimeout(S.remoteTimer);
+  const base = siteUrl();
+  if (!base || (S.cfg && !S.channel)) return;
+  if (document.hidden && !manual) {
+    S.remoteDue = true;
+    return;
+  }
+  S.remoteDue = false;
+  const gen = ++S.rgen;
+  S.remoteBusy = true;
+  renderStatus();
+  let list = null;
+  let R = null;
+  let err = '';
+  try {
+    let id = '';
+    if (S.cfg) {
+      id = S.channel.id;
+      try {
+        list = prepIndex(await getJson(base + 'channels.json'));
+      } catch {}
+    } else {
+      list = prepIndex(await getJson(base + 'channels.json'));
+      id = chooseChannel(list).id;
+    }
+    if (gen === S.rgen) S.remoteFor = id;
+    R = prepRemote(await getJson(`${base}data/${encodeURIComponent(id)}.json`));
+  } catch (e) {
+    err = e.kind || 'network';
+  }
+  if (gen !== S.rgen) return;
+  S.remoteBusy = false;
+  S.remoteErr = err;
+  if (list) S.chans = list;
+  if (R) S.remote = R;
+  scheduleRemote();
+  if (S.cfg) {
+    if (R && S.total != null) renderMerged();
+  } else {
+    $('start').disabled = false;
+    $('start').textContent = 'Start';
+    if (R) {
+      if (S.channel && S.channel.id !== R.channel.id) resetState(true);
+      applyRemoteView();
+    } else if (!S.remote) {
+      if (err !== 'missing' || S.site) showAlert({ missing: 'remotemissing', format: 'remotefmt' }[err] || 'remote', base);
+      openSettings(true);
+    }
+  }
+  renderChanPick();
+  renderStatus();
+}
+
+function applyRemoteView() {
+  const R = S.remote;
+  const ch = R.channel;
+  if (!S.channel || S.channel.id !== ch.id) {
+    S.videos.clear();
+    S.hist = loadHist(ch.id);
+    S.sel = loadSel(ch.id);
+    S.hourly = { views: loadHourly(ch.id, 'views', S.hist), subs: loadHourly(ch.id, 'subs', null) };
+  }
+  S.channel = { ...ch, statTotal: R.latest.statTotal, subs: R.latest.subs, hiddenSubs: R.latest.hiddenSubs, checked: R.latest.t };
+  const seen = new Set();
+  let total = 0;
+  let likes = 0;
+  let comments = 0;
+  for (const x of R.latest.videos) {
+    let v = S.videos.get(x.id);
+    if (!v) {
+      v = { id: x.id, hist: loadVideoHist(ch.id, x.id), dirty: false, base: x.published > S.sessionStart ? 0 : x.views };
+      S.videos.set(x.id, v);
+    }
+    Object.assign(v, x);
+    seen.add(x.id);
+    total += x.views;
+    likes += x.likes || 0;
+    comments += x.comments || 0;
+  }
+  for (const id of [...S.videos.keys()]) if (!seen.has(id)) S.videos.delete(id);
+  S.known = seen;
+  syncSel();
+  const before = S.total;
+  Object.assign(S, { total, likes, comments, lastPoll: R.latest.t });
+  hideAlert();
+  if (before == null) reveal();
+  renderAll(before);
+}
+
+function effHist() {
+  const R = remoteFor();
+  if (!R || !R.hist.length) return S.hist;
+  if (!S.hist.length) return R.hist;
+  const all = R.hist.concat(S.hist).sort((a, b) => a[0] - b[0]);
+  const out = [];
+  for (const p of all) {
+    const q = out[out.length - 1];
+    if (!q || p[0] - q[0] >= 20e3) out.push(p);
+  }
+  return out;
+}
+
+function measuredShare(b) {
+  return Math.abs(b[1]) / (Math.abs(b[1]) + Math.abs(b[2]) || 1);
+}
+
+function effHourly(key) {
+  const L = S.hourly[key];
+  const R = remoteFor();
+  const RH = R && R.hourly[key];
+  if (!RH || !RH.last) return L;
+  const map = new Map();
+  for (const b of RH.map.values()) map.set(b[0], [b[0], b[1], b[2], null]);
+  const local = L ? [...L.map.values()] : [];
+  const lastL = L && L.last;
+  const lastR = RH.last;
+  const firstR = RH.first || [lastR[0], null];
+  if (lastL && firstR[1] != null && lastL[0] <= firstR[0]) {
+    for (const b of local) {
+      const a = map.get(b[0]);
+      if (a) {
+        a[1] += b[1];
+        a[2] += b[2];
+      } else {
+        map.set(b[0], [b[0], b[1], b[2], null]);
+      }
+    }
+    spreadHourly({ map }, lastL[0], lastL[1], firstR[0], firstR[1]);
+  } else {
+    const h0 = hourFloor(firstR[0]);
+    const h1 = hourFloor(lastR[0]);
+    let firstL = Infinity;
+    for (const b of local) if ((b[1] || b[2]) && b[0] < firstL) firstL = b[0];
+    const edges = new Set([h0, firstL, lastL ? hourFloor(lastL[0]) : NaN]);
+    for (const b of local) {
+      if (b[0] >= h1) continue;
+      const a = map.get(b[0]);
+      const take = !a || b[0] < h0 || (edges.has(b[0]) ? Math.abs(b[1] + b[2]) > Math.abs(a[1] + a[2]) : measuredShare(b) > measuredShare(a));
+      if (take) map.set(b[0], [b[0], b[1], b[2], null]);
+    }
+    if (lastL && lastL[0] > lastR[0]) {
+      const pts = key === 'views' ? S.hist.filter(p => p[0] > lastR[0] && p[0] < lastL[0]) : [];
+      pts.push(lastL);
+      let prev = lastR;
+      for (const p of pts) {
+        spreadHourly({ map }, prev[0], prev[1], p[0], p[1]);
+        prev = p;
+      }
+    }
+  }
+  if (key === 'views') {
+    const at = hs => {
+      let b = map.get(hs);
+      if (!b) {
+        b = [hs, 0, 0, null];
+        map.set(hs, b);
+      }
+      return b;
+    };
+    for (const [hs, v] of R.studio) at(hs)[3] = v;
+    for (const b of local) if (b[3] != null) at(b[0])[3] = b[3];
+  }
+  return { map };
+}
+
+function effVH(v) {
+  const R = remoteFor();
+  const r = R && R.vh.get(v.id);
+  if (!r) return v.hist;
+  if (!v.hist.length) return r;
+  const all = r.concat(v.hist).sort((a, b) => a[0] - b[0]);
+  const out = [];
+  for (const p of all) {
+    const q = out[out.length - 1];
+    if (!q || p[0] - q[0] >= 15) out.push(p);
+  }
+  return out;
+}
+
+function hourlyJson(H) {
+  const round = x => Math.round(x * 100) / 100;
+  return {
+    last: H.last,
+    buckets: [...H.map.values()].sort((a, b) => a[0] - b[0]).map(b => [b[0], round(b[1]), round(b[2]), b[3] == null ? null : b[3]])
+  };
+}
+
+function exportSeed() {
+  const msg = $('exportMsg');
+  const ch = S.channel;
+  if (!ch) {
+    msg.textContent = 'Load your channel first, then export.';
+    return;
+  }
+  const hist = loadHist(ch.id);
+  const hourly = { views: hourlyJson(loadHourly(ch.id, 'views', hist)), subs: hourlyJson(loadHourly(ch.id, 'subs', null)) };
+  const vh = {};
+  const prefix = `ytlive.vh.${ch.id}.`;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith(prefix)) continue;
+      const pts = loadVideoHist(ch.id, k.slice(prefix.length));
+      if (pts.length) vh[k.slice(prefix.length)] = pts;
+    }
+  } catch {}
+  const hours = hourly.views.buckets.length;
+  if (!hist.length && !hours && !Object.keys(vh).length) {
+    msg.textContent = 'This browser has no history for this channel yet.';
+    return;
+  }
+  const body = JSON.stringify({ kind: 'ytlive-seed', v: 1, channelId: ch.id, channel: ch.title, exported: Date.now(), hist, hourly, vh });
+  const name = `seed-${slug(ch.title) || ch.id}.json`;
+  const a = h('a', { href: URL.createObjectURL(new Blob([body], { type: 'application/json' })), download: name });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10e3);
+  const plural = (n, word) => `${fmt(n)} ${word}${n === 1 ? '' : 's'}`;
+  msg.textContent = `Saved ${name} with ${plural(hist.length, 'reading')} and ${plural(hours, 'hour')}. Upload it to your GitHub repo next to record.py.`;
+}
+
+function resetState(keepView) {
+  S.gen += 1;
+  clearTimeout(S.timer);
+  cancelAnimationFrame(S.raf);
+  if (!keepView) $('live').hidden = true;
+  $('bump').classList.remove('show');
+  S.videos.clear();
+  for (const r of S.rows.values()) r.tr.remove();
+  S.rows.clear();
+  Object.assign(S, {
+    busy: false,
+    channel: null,
+    known: new Set(),
+    sel: { auto: true, ids: [] },
+    hourly: { views: null, subs: null },
+    hgeom: null,
+    hist: [],
+    total: null,
+    likes: null,
+    comments: null,
+    likesBase: null,
+    commentsBase: null,
+    subsBase: null,
+    eng: { likes: null, comments: null, subs: null },
+    shown: null,
+    sessionStart: Date.now(),
+    lastSubs: 0,
+    lastPoll: 0,
+    lastList: 0,
+    lastCheck: 0,
+    prevPoll: 0,
+    prevTotal: null,
+    nextAt: 0,
+    fails: 0,
+    note: '',
+    paused: '',
+    okOnce: false
+  });
+  hideAlert();
+  hideHover();
+  hideLaunchHover();
+  hideHourHover();
+  renderChanPick();
+}
+
+function start(keepView) {
+  resetState(keepView);
+  $('start').disabled = true;
+  $('start').textContent = 'Connecting…';
+  cycle(true);
+}
+
+function startView(keepView) {
+  resetState(keepView);
+  if (S.remote) {
+    applyRemoteView();
+  } else {
+    $('start').disabled = true;
+    $('start').textContent = 'Loading…';
+  }
+  fetchRemote(true);
+}
+
+function reveal() {
+  $('settings').hidden = true;
+  $('live').hidden = false;
+  $('gear').hidden = false;
+  $('gear').setAttribute('aria-expanded', 'false');
+}
+
+function showAlert(kind, raw) {
+  const link = (href, text) => h('a', { href, target: '_blank', rel: 'noopener' }, text);
+  const found = raw.match(/https:\/\/console\.(?:developers|cloud)\.google\.com\/\S+/);
+  const enable = found ? found[0].replace(/[.,)]+$/, '') : LINK_LIB;
+  const map = {
+    key: ['That API key isn’t valid.', ['Copy it again from ', link(LINK_CRED, 'Credentials'), '.']],
+    disabled: ['YouTube Data API v3 isn’t enabled for this key’s project.', [link(enable, 'Enable it'), ', wait a minute, then press Start.']],
+    referrer: ['This key only works on specific websites.', ['A local file has no web address, so in ', link(LINK_CRED, 'Credentials'), ' set the key’s Application restrictions to None.']],
+    blocked: ['This key isn’t allowed to use YouTube Data API v3.', ['In ', link(LINK_CRED, 'Credentials'), ', add YouTube Data API v3 to the key’s API restrictions.']],
+    quota: ['Today’s API quota is used up.', ['It resets at midnight Pacific. Press Try again after that, or pick a slower refresh in Settings.']],
+    remote: ['Couldn’t load the recorded data.', ['Check your connection and the recorder dashboard URL, then press Start.']],
+    remotemissing: ['There’s no recorded data at that address yet.', ['Run the recorder once from your repo’s Actions tab, or check the URL.']],
+    remotefmt: ['That address isn’t a recorder dashboard.', ['Use your GitHub Pages address, like https://you.github.io/ytracker/.']],
+    notfound: [raw, ['Enter your @handle, channel URL, or channel ID (it starts with UC).']],
+    network: ['Couldn’t reach the YouTube API.', location.protocol === 'file:'
+      ? ['If you’re online, your browser may be blocking requests from local files. Run ', h('code', null, 'python3 -m http.server 8000'), ' in this file’s folder, then open ', h('code', null, 'localhost:8000/' + fileName()), '.']
+      : ['Check your connection, then press Start. If this page is open inside a preview, download the file and open it in your browser instead.']],
+    server: ['YouTube’s API returned an error.', ['Retrying automatically.']]
+  };
+  const [title, hint] = map[kind] || [raw, []];
+  const showRaw = raw && raw !== title && !['network', 'notfound', 'server'].includes(kind);
+  $('alert').replaceChildren(
+    h('span', { class: 'icon', 'aria-hidden': 'true' }, '!'),
+    h('div', null,
+      h('p', { class: 'a-title' }, title),
+      hint.length ? h('p', { class: 'a-hint' }, hint) : '',
+      showRaw ? h('p', { class: 'a-raw' }, raw) : '')
+  );
+  $('alert').hidden = false;
+}
+
+function hideAlert() {
+  $('alert').hidden = true;
+}
+
+function renderMerged() {
+  renderHead();
+  renderTiles();
+  renderChart();
+  renderData();
+  renderHourly();
+  renderHourlyData();
+  renderLaunchAll();
+}
+
+function gapWhy() {
+  return remoteFor() ? 'gap in readings' : 'page was closed';
+}
+
+function renderNotes() {
+  const remote = !!remoteFor();
+  $('estName').textContent = remote ? 'Estimated (gap in readings)' : 'Estimated (page closed)';
+  $('lfoot').textContent = remote
+    ? 'The recorder follows each upload for its first 8 days, about every 10 minutes. Use the dots in the uploads list to highlight up to three.'
+    : 'Uploads are tracked from the moment this page first sees them, so keep it open when you post. Use the dots in the uploads list to highlight up to three.';
+  $('importNote').hidden = !remote;
+}
+
+function renderAll(before) {
+  renderHead();
+  renderHero(before);
+  renderTiles();
+  renderTable();
+  renderChart();
+  renderData();
+  renderHourly();
+  renderHourlyData();
+  renderLaunchAll();
+}
+
+function renderLaunchAll() {
+  renderLaunch();
+  renderLaunchNote();
+  renderLaunchData();
+}
+
+function renderHead() {
+  const c = S.channel;
+  $('title').textContent = c.title;
+  $('subtitle').textContent = S.cfg
+    ? `Live view total · refreshes every ${S.cfg.interval < 60 ? S.cfg.interval + ' s' : S.cfg.interval / 60 + ' min'}` + (remoteFor() ? ' · with recorder history' : '')
+    : 'Recorded by GitHub Actions about every 10 minutes';
+  renderNotes();
+  renderChanPick();
+  const av = $('avatar');
+  if (c.avatar) {
+    if (av.getAttribute('src') !== c.avatar) av.src = c.avatar;
+    av.hidden = false;
+  } else {
+    av.hidden = true;
+  }
+}
+
+function renderHero(before) {
+  animateTotal(S.total);
+  const n = S.videos.size;
+  $('heroLabel').textContent = `all-time views across ${fmt(n)} public upload${n === 1 ? '' : 's'}`;
+  document.title = `${fmt(S.total)} views · ${S.channel.title}`;
+  if (before != null && S.total !== before) bump(S.total - before);
+}
+
+function animateTotal(to) {
+  const el = $('total');
+  cancelAnimationFrame(S.raf);
+  const from = S.shown;
+  if (from == null || from === to || calm() || document.hidden) {
+    S.shown = to;
+    el.textContent = fmt(to);
+    return;
+  }
+  const t0 = performance.now();
+  const step = now => {
+    const p = Math.min(1, (now - t0) / 800);
+    S.shown = Math.round(from + (to - from) * (1 - (1 - p) ** 3));
+    el.textContent = fmt(S.shown);
+    if (p < 1) S.raf = requestAnimationFrame(step);
+  };
+  S.raf = requestAnimationFrame(step);
+}
+
+function bump(d) {
+  const b = $('bump');
+  b.textContent = signed(d);
+  b.className = 'bump-total ' + (d > 0 ? 'up' : 'down');
+  void b.offsetWidth;
+  b.classList.add('show');
+  clearTimeout(S.bumpTimer);
+  S.bumpTimer = setTimeout(() => b.classList.remove('show'), 4000);
+}
+
+function rate(d, ms) {
+  const hourly = ms >= 6 * 3600e3;
+  const per = d / (ms / (hourly ? 3600e3 : 60e3));
+  const unit = hourly ? 'views/hour' : 'views/min';
+  return Math.abs(per) >= 10 ? `${fmt(per)} ${unit}` : `${(Math.round(per * 10) / 10).toLocaleString()} ${unit}`;
+}
+
+function windowDelta(ms, label) {
+  const hs = effHist();
+  const now = S.lastPoll;
+  const pending = { label, delta: null, sub: 'Collecting…' };
+  if (!hs.length || S.total == null) return pending;
+  const cut = now - ms;
+  let i = hs.length - 1;
+  while (i >= 0 && hs[i][0] > cut) i--;
+  if (i >= 0) {
+    const a = hs[i];
+    const b = hs[i + 1];
+    let v = null;
+    if (b && b[0] - a[0] <= GAP_MAX) v = a[1] + ((b[1] - a[1]) * (cut - a[0])) / (b[0] - a[0] || 1);
+    else if (a[0] >= cut - HIST_STEP - 60e3) v = a[1];
+    if (v != null) {
+      const d = Math.round(S.total - v);
+      return { label, delta: d, sub: '≈ ' + rate(d, ms) };
+    }
+  }
+  const first = hs[i + 1];
+  if (!first || now - first[0] < 60e3) return pending;
+  const d = S.total - first[1];
+  const when = dateOnly(first[0]) === dateOnly(now) ? clock(first[0]) : `${dateOnly(first[0])}, ${clock(first[0])}`;
+  return { label: 'Views since ' + when, delta: d, sub: '≈ ' + rate(d, now - first[0]) };
+}
+
+function flashEl(el) {
+  el.classList.remove('bump');
+  void el.offsetWidth;
+  el.classList.add('bump');
+}
+
+function engSince(key, now) {
+  if (S.cfg) {
+    const base = S[key + 'Base'];
+    const d = now - (base == null ? now : base);
+    return `${d === 0 ? '+0' : signed(d)} since ${clock(S.sessionStart)}`;
+  }
+  const R = S.remote;
+  if (!R) return '';
+  const idx = ENG_IDX[key];
+  const cut = R.latest.t - 86400e3;
+  let base = null;
+  for (const x of R.samples) {
+    if (x[idx] == null) continue;
+    if (x[0] <= cut) {
+      base = x;
+    } else {
+      if (!base) base = x;
+      break;
+    }
+  }
+  if (!base || base[0] >= R.latest.t) return '';
+  const d = now - base[idx];
+  const when = base[0] <= cut ? 'in 24 h' : 'since ' + (dateOnly(base[0]) === dateOnly(R.latest.t) ? clock(base[0]) : dateOnly(base[0]));
+  return `${d === 0 ? '+0' : signed(d)} ${when}`;
+}
+
+function renderEngagement() {
+  const c = S.channel;
+  if (c.subs == null) {
+    $('subsValue').textContent = 'Hidden';
+    $('subsSub').textContent = 'This channel hides its subscriber count';
+  } else {
+    $('subsValue').textContent = fmt(c.subs);
+    $('subsSub').textContent = [engSince('subs', c.subs), c.subs >= 1000 ? 'YouTube rounds this to 3 digits' : ''].filter(Boolean).join(' · ');
+    if (S.eng.subs != null && S.eng.subs !== c.subs) flashEl($('subsTile'));
+    S.eng.subs = c.subs;
+  }
+  for (const key of ['likes', 'comments']) {
+    const now = S[key];
+    const per100 = S.total > 0 ? `${((now / S.total) * 100).toFixed(1)} per 100 views` : '';
+    $(key + 'Value').textContent = fmt(now);
+    $(key + 'Sub').textContent = [engSince(key, now), per100].filter(Boolean).join(' · ');
+    if (S.eng[key] != null && S.eng[key] !== now) flashEl($(key + 'Tile'));
+    S.eng[key] = now;
+  }
+}
+
+function renderTiles() {
+  renderEngagement();
+  const w = windowDelta(3600e3, 'Views, last 60 min');
+  $('t1Label').textContent = w.label;
+  $('t1Value').textContent = w.delta == null ? '–' : signed(w.delta);
+  $('t1Value').className = 't-value' + (w.delta > 0 ? ' good' : '');
+  $('t1Sub').textContent = w.sub;
+  const c = S.channel;
+  const diff = S.total - c.statTotal;
+  $('t2Value').textContent = fmt(c.statTotal);
+  $('t2Sub').textContent = (diff > 0 ? `${fmt(diff)} behind live` : diff < 0 ? `${fmt(-diff)} above live` : 'Matches live') + ` · checked ${clock(c.checked)}`;
+  if (S.cfg) {
+    $('t3Label').textContent = 'API units used today';
+    $('t3Value').textContent = fmt(unitsToday());
+    $('t3Value').className = 't-value';
+    $('t3Sub').textContent = 'of 10,000 · resets midnight Pacific';
+  } else {
+    const w3 = windowDelta(86400e3, 'Views, last 24 hours');
+    $('t3Label').textContent = w3.label;
+    $('t3Value').textContent = w3.delta == null ? '–' : signed(w3.delta);
+    $('t3Value').className = 't-value' + (w3.delta > 0 ? ' good' : '');
+    $('t3Sub').textContent = w3.sub;
+  }
+}
+
+function makeRow() {
+  const img = h('img', { alt: '', loading: 'lazy' });
+  const a = h('a', { target: '_blank', rel: 'noopener' });
+  const pick = h('button', { class: 'swatch', type: 'button', 'aria-pressed': 'false' });
+  const r = {
+    img,
+    a,
+    pick,
+    sig: null,
+    pub: h('td', { class: 'pub dim' }),
+    views: h('td', { class: 'num' }),
+    delta: h('td', { class: 'num since' }),
+    likes: h('td', { class: 'num' }),
+    comments: h('td', { class: 'num com' })
+  };
+  r.tr = h('tr', null, h('td', { class: 'pick' }, pick), h('td', { class: 'thumb' }, img), h('td', { class: 'title' }, a), r.pub, r.views, r.delta, r.likes, r.comments);
+  r.tr.addEventListener('animationend', () => r.tr.classList.remove('bump'));
+  pick.addEventListener('click', () => toggleSel(pick.dataset.id));
+  return r;
+}
+
+function fillRow(r, v) {
+  if (v.thumb && r.img.getAttribute('src') !== v.thumb) r.img.src = v.thumb;
+  r.a.href = (v.short ? 'https://www.youtube.com/shorts/' : 'https://www.youtube.com/watch?v=') + encodeURIComponent(v.id);
+  r.a.textContent = v.title;
+  r.a.title = v.title;
+  r.pub.textContent = dateOnly(v.published);
+  r.views.textContent = fmt(v.views);
+  const d = v.views - v.base;
+  r.delta.textContent = signed(d);
+  r.delta.className = 'num since ' + (d > 0 ? 'good' : 'dim');
+  const slot = slotOf(v.id);
+  r.pick.dataset.id = v.id;
+  r.pick.className = 'swatch' + (slot >= 0 ? ' s' + (slot + 1) : '');
+  r.pick.setAttribute('aria-pressed', String(slot >= 0));
+  r.pick.setAttribute('aria-label', `Highlight “${v.title}” on launch curves`);
+  r.likes.textContent = v.likes == null ? '–' : fmt(v.likes);
+  r.comments.textContent = v.comments == null ? '–' : fmt(v.comments);
+  const sig = `${v.views}|${v.likes}|${v.comments}`;
+  if (r.sig != null && r.sig !== sig) flashEl(r.tr);
+  r.sig = sig;
+}
+
+function renderTable() {
+  const list = [...S.videos.values()].sort((a, b) => b.views - a.views || b.published - a.published);
+  const body = $('rows');
+  const keep = new Set();
+  for (const v of list) {
+    keep.add(v.id);
+    let r = S.rows.get(v.id);
+    if (!r) {
+      r = makeRow();
+      S.rows.set(v.id, r);
+    }
+    fillRow(r, v);
+    body.appendChild(r.tr);
+  }
+  for (const [id, r] of S.rows) {
+    if (!keep.has(id)) {
+      r.tr.remove();
+      S.rows.delete(id);
+    }
+  }
+  $('upCount').textContent = '· ' + fmt(list.length);
+  $('sinceHead').textContent = 'Since ' + clock(S.sessionStart);
+}
+
+function chartData() {
+  const pts = effHist().slice();
+  if (S.total != null && S.lastPoll && (!pts.length || S.lastPoll > pts[pts.length - 1][0])) pts.push([S.lastPoll, S.total]);
+  const t1 = S.lastPoll || Date.now();
+  const span = RANGES[S.range] || Infinity;
+  let t0 = span === Infinity ? (pts.length ? pts[0][0] : t1) : t1 - span;
+  if (t1 - t0 < 60e3) t0 = t1 - 60e3;
+  let i = 0;
+  while (i < pts.length && pts[i][0] < t0) i++;
+  const vis = pts.slice(i).filter(p => p[0] <= t1);
+  const line = vis.slice();
+  if (i > 0 && vis.length) {
+    const [ta, va] = pts[i - 1];
+    const [tb, vb] = vis[0];
+    line.unshift([t0, va + (vb - va) * (t0 - ta) / (tb - ta || 1)]);
+  }
+  return { t0, t1, vis, line };
+}
+
+function niceStep(lo, hi, maxIntervals) {
+  for (let k = 0; k < 16; k++) {
+    for (const m of [1, 2, 2.5, 5]) {
+      const step = m * 10 ** k;
+      if (Number.isInteger(step) && Math.ceil(hi / step) - Math.floor(lo / step) <= maxIntervals) return step;
+    }
+  }
+  return 10 ** 16;
+}
+
+function decimalsFor(x) {
+  let dec = 0;
+  while (dec < 3 && Math.abs(Math.round(x * 10 ** dec) - x * 10 ** dec) > 1e-9) dec++;
+  return dec;
+}
+
+function yAxis(lo, hi, signedAxis) {
+  const step = niceStep(lo, hi, signedAxis ? 4 : 5);
+  const y0 = signedAxis ? Math.floor(lo / step) * step : Math.max(0, Math.floor(lo / step) * step);
+  const y1 = Math.max(y0 + step, Math.ceil(hi / step) * step);
+  const ticks = [];
+  for (let v = y0; v <= y1 + step / 2; v += step) ticks.push(v);
+  const compact = Math.max(y1, -y0) >= 10000;
+  const dec = compact ? decimalsFor(step / 1000) : 0;
+  const label = v => (v < 0 ? '−' : '') + (compact ? (Math.abs(v) / 1000).toFixed(dec) + 'K' : fmt(Math.abs(v)));
+  const width = 14 + Math.max(...ticks.map(v => label(v).length)) * 7.2;
+  return { y0, y1, ticks, label, width };
+}
+
+function sizeSvg(box, svg, H) {
+  const W = Math.max(260, Math.floor(box.clientWidth));
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
+  svg.replaceChildren();
+  return W;
+}
+
+function renderChart() {
+  const box = $('chart');
+  const svg = $('svg');
+  const H = 240;
+  const W = sizeSvg(box, svg, H);
+  const d = chartData();
+  if (d.line.length < 2) {
+    S.geom = null;
+    hideHover();
+    s('text', { x: W / 2, y: H / 2, 'text-anchor': 'middle', class: 'empty' }, svg).textContent = 'Collecting data. The line starts after the next update.';
+    box.setAttribute('aria-label', 'Running total chart, collecting data');
+    return;
+  }
+  const vals = d.line.map(p => p[1]);
+  let lo = Math.min(...vals);
+  let hi = Math.max(...vals);
+  if (hi - lo < 4) {
+    const mid = (hi + lo) / 2;
+    lo = mid - 2;
+    hi = mid + 2;
+  }
+  const ax = yAxis(lo, hi);
+  const L = ax.width;
+  const R = 14;
+  const T = 10;
+  const B = 28;
+  const pw = W - L - R;
+  const ph = H - T - B;
+  const X = t => L + ((t - d.t0) / (d.t1 - d.t0)) * pw;
+  const Y = v => T + (1 - (v - ax.y0) / (ax.y1 - ax.y0)) * ph;
+  for (const v of ax.ticks) {
+    const y = Math.round(Y(v)) + 0.5;
+    s('line', { x1: L, x2: W - R, y1: y, y2: y, class: v === ax.y0 ? 'axis' : 'grid' }, svg);
+    s('text', { x: L - 8, y: y + 4, 'text-anchor': 'end' }, svg).textContent = ax.label(v);
+  }
+  const maxTicks = Math.max(2, Math.floor(pw / 92));
+  const xs = X_STEPS.find(st => (d.t1 - d.t0) / st <= maxTicks) || X_STEPS[X_STEPS.length - 1];
+  const off = new Date(d.t0).getTimezoneOffset() * 60e3;
+  for (let t = Math.ceil((d.t0 - off) / xs) * xs + off; t <= d.t1; t += xs) {
+    const x = X(t);
+    if (x < L + 24 || x > W - 24) continue;
+    const dt = new Date(t);
+    const label = xs >= 86400e3 || (dt.getHours() === 0 && dt.getMinutes() === 0) ? dateOnly(t) : clock(t);
+    s('text', { x, y: H - 8, 'text-anchor': 'middle' }, svg).textContent = label;
+  }
+  const path = d.line.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join('');
+  s('path', { d: path, class: 'line' }, svg);
+  const last = d.vis[d.vis.length - 1];
+  s('circle', { cx: X(last[0]), cy: Y(last[1]), r: 6, class: 'ring' }, svg);
+  s('circle', { cx: X(last[0]), cy: Y(last[1]), r: 4, class: 'mark' }, svg);
+  const g = s('g', { visibility: 'hidden' }, svg);
+  S.hv = {
+    g,
+    line: s('line', { y1: T, y2: T + ph, class: 'xhair' }, g),
+    ring: s('circle', { r: 6, class: 'ring' }, g),
+    dot: s('circle', { r: 4, class: 'mark' }, g)
+  };
+  S.geom = { W, H, L, T, pw, ph, t0: d.t0, t1: d.t1, X, Y, vis: d.vis };
+  box.setAttribute('aria-label', `Running total, ${RANGE_TEXT[S.range]}: ${fmt(d.line[0][1])} to ${fmt(last[1])} views`);
+  if (S.hoverOn) showHover(S.hoverLast ? d.vis.length - 1 : nearest(S.hoverT));
+}
+
+function nearest(t) {
+  const v = S.geom.vis;
+  let lo = 0;
+  let hi = v.length - 1;
+  while (lo < hi) {
+    const m = (lo + hi) >> 1;
+    if (v[m][0] < t) lo = m + 1;
+    else hi = m;
+  }
+  if (lo > 0 && t - v[lo - 1][0] <= v[lo][0] - t) lo -= 1;
+  return lo;
+}
+
+function placeTip(tip, x, y, W, H) {
+  tip.hidden = false;
+  const tw = tip.offsetWidth;
+  const th = tip.offsetHeight;
+  let left = x + 14;
+  if (left + tw > W) left = x - 14 - tw;
+  tip.style.left = Math.max(0, left) + 'px';
+  tip.style.top = Math.max(0, Math.min(H - th, y)) + 'px';
+}
+
+function showHover(i) {
+  const g = S.geom;
+  if (!g || !g.vis.length) return;
+  const idx = Math.max(0, Math.min(g.vis.length - 1, i));
+  const [t, v] = g.vis[idx];
+  S.hoverOn = true;
+  S.hoverIdx = idx;
+  S.hoverT = t;
+  S.hoverLast = idx === g.vis.length - 1;
+  const x = g.X(t);
+  const y = g.Y(v);
+  S.hv.line.setAttribute('x1', x);
+  S.hv.line.setAttribute('x2', x);
+  for (const c of [S.hv.ring, S.hv.dot]) {
+    c.setAttribute('cx', x);
+    c.setAttribute('cy', y);
+  }
+  S.hv.g.setAttribute('visibility', 'visible');
+  const tip = $('tip');
+  tip.replaceChildren(h('strong', null, fmt(v) + ' views'), stamp(t));
+  tip.hidden = false;
+  placeTip(tip, x, y - tip.offsetHeight - 12, g.W, g.H);
+}
+
+function hideHover() {
+  S.hoverOn = false;
+  if (S.hv) S.hv.g.setAttribute('visibility', 'hidden');
+  $('tip').hidden = true;
+}
+
+function onPointer(e) {
+  const g = S.geom;
+  if (!g) return;
+  const r = $('svg').getBoundingClientRect();
+  const x = (e.clientX - r.left) * (g.W / r.width);
+  if (x < g.L - 12 || x > g.L + g.pw + 12) {
+    hideHover();
+    return;
+  }
+  showHover(nearest(g.t0 + ((x - g.L) / g.pw) * (g.t1 - g.t0)));
+}
+
+function renderData() {
+  if (!$('dataDetails').open) return;
+  const { vis } = chartData();
+  const start = Math.max(0, vis.length - 200);
+  const rows = [];
+  for (let j = vis.length - 1; j >= start; j--) {
+    const older = vis[j - 1];
+    rows.push(h('tr', null,
+      h('td', null, stamp(vis[j][0])),
+      h('td', { class: 'num' }, fmt(vis[j][1])),
+      h('td', { class: 'num dim' }, older ? signed(vis[j][1] - older[1]) : '–')));
+  }
+  const table = h('table', { class: 'small' },
+    h('thead', null, h('tr', null, h('th', null, 'Time'), h('th', { class: 'num' }, 'Total'), h('th', { class: 'num' }, 'Change'))),
+    h('tbody', null, rows));
+  $('dataTable').replaceChildren(table);
+  if (start > 0) $('dataTable').append(h('p', { class: 'dim small' }, `Showing the latest 200 of ${fmt(vis.length)} points.`));
+}
+
+function hourFloor(t) {
+  const d = new Date(t);
+  d.setMinutes(0, 0, 0);
+  return d.getTime();
+}
+
+const hourLabel = t => new Date(t).toLocaleTimeString([], { hour: 'numeric' });
+
+function hourlyStoreKey(chId, key) {
+  return key === 'views' ? `ytlive.hourly.${chId}` : `ytlive.hourly.${key}.${chId}`;
+}
+
+function spreadHourly(H, t0, v0, t1, v1) {
+  const dt = t1 - t0;
+  const dv = v1 - v0;
+  if (!(dt > 0) || dv === 0) return;
+  const slot = dt > GAP_MAX ? 2 : 1;
+  let a = t0;
+  while (a < t1) {
+    const hs = hourFloor(a);
+    const b = Math.min(t1, hs + 3600e3);
+    let bucket = H.map.get(hs);
+    if (!bucket) {
+      bucket = [hs, 0, 0, null];
+      H.map.set(hs, bucket);
+    }
+    bucket[slot] += (dv * (b - a)) / dt;
+    a = b;
+  }
+}
+
+function loadHourly(chId, key, hist) {
+  const raw = store.get(hourlyStoreKey(chId, key), null);
+  const H = { last: null, map: new Map() };
+  if (raw && Array.isArray(raw.buckets)) {
+    for (const b of raw.buckets) {
+      if (!Array.isArray(b) || b.length < 3 || !b.slice(0, 3).every(Number.isFinite)) continue;
+      H.map.set(b[0], [b[0], b[1], b[2], Number.isFinite(b[3]) ? b[3] : null]);
+    }
+    if (Array.isArray(raw.last) && raw.last.length === 2 && raw.last.every(Number.isFinite)) H.last = raw.last;
+    return H;
+  }
+  if (hist && hist.length) {
+    for (let i = 1; i < hist.length; i++) spreadHourly(H, hist[i - 1][0], hist[i - 1][1], hist[i][0], hist[i][1]);
+    H.last = hist[hist.length - 1].slice(0, 2);
+  }
+  return H;
+}
+
+function saveHourly(key) {
+  store.set(hourlyStoreKey(S.channel.id, key), hourlyJson(S.hourly[key]));
+}
+
+function updateHourly(key, t, value) {
+  const H = S.hourly[key];
+  if (!H || value == null || !t || (H.last && t <= H.last[0])) return;
+  if (H.last) spreadHourly(H, H.last[0], H.last[1], t, value);
+  H.last = [t, value];
+  saveHourly(key);
+}
+
+function parseStudioHours(text) {
+  const out = [];
+  let bad = 0;
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || /^hour\b/i.test(line)) continue;
+    const m = line.match(/^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2})(?::\d{2})?\s*[,;\t]\s*([\d,]+)$/);
+    if (!m) {
+      bad += 1;
+      continue;
+    }
+    out.push([new Date(+m[1], +m[2] - 1, +m[3], +m[4]).getTime(), Number(m[5].replace(/,/g, ''))]);
+  }
+  return { rows: out, bad };
+}
+
+function importStudioHours(text) {
+  const status = $('importStatus');
+  if (!S.channel || !S.hourly.views) {
+    status.textContent = 'Start the counter first, then import.';
+    return;
+  }
+  const { rows, bad } = parseStudioHours(text);
+  const current = hourFloor(Date.now());
+  let used = 0;
+  let skipped = bad;
+  for (const [t, v] of rows) {
+    const hs = hourFloor(t);
+    if (hs >= current || !Number.isFinite(v)) {
+      skipped += 1;
+      continue;
+    }
+    let bucket = S.hourly.views.map.get(hs);
+    if (!bucket) {
+      bucket = [hs, 0, 0, null];
+      S.hourly.views.map.set(hs, bucket);
+    }
+    bucket[3] = v;
+    used += 1;
+  }
+  saveHourly('views');
+  status.textContent = `Imported ${fmt(used)} hour${used === 1 ? '' : 's'}` + (skipped ? `, skipped ${fmt(skipped)} (unreadable, current or future hours)` : '') + '.';
+  if (S.hmetric !== 'views') setHMetric('views');
+  renderHourly();
+  renderHourlyData();
+}
+
+function clearStudioHours() {
+  if (!S.channel || !S.hourly.views) return;
+  let n = 0;
+  for (const [hs, b] of S.hourly.views.map) {
+    if (b[3] == null) continue;
+    n += 1;
+    if (b[1] === 0 && b[2] === 0) S.hourly.views.map.delete(hs);
+    else b[3] = null;
+  }
+  saveHourly('views');
+  $('importStatus').textContent = `Removed Studio numbers from ${fmt(n)} hour${n === 1 ? '' : 's'}.`;
+  renderHourly();
+  renderHourlyData();
+}
+
+function hourlySeries() {
+  const H = effHourly(S.hmetric);
+  if (!H || !H.map.size) return [];
+  const keys = [...H.map.keys()].sort((a, b) => a - b);
+  const end = Math.max(keys[keys.length - 1], hourFloor(S.lastPoll || Date.now()));
+  const out = [];
+  for (let t = keys[0]; t <= end; t += 3600e3) out.push(H.map.get(t) || [t, 0, 0, null]);
+  return out;
+}
+
+function hourlyGroups(pw) {
+  const all = hourlySeries();
+  const span = HRANGES[S.hrange];
+  const rows = span === Infinity ? all : all.slice(-span);
+  const k = MERGE.find(m => Math.ceil(rows.length / m) * 4 <= pw) || 24;
+  const groups = [];
+  for (const [t, m0, e0, sv] of rows) {
+    const studio = sv != null;
+    const m = studio ? sv : m0;
+    const e = studio ? 0 : e0;
+    const start = t - (new Date(t).getHours() % k) * 3600e3;
+    let g = groups[groups.length - 1];
+    if (!g || g.start !== start) {
+      g = { start, first: t, last: t, m: 0, e: 0, hours: 0, studio: 0 };
+      groups.push(g);
+    }
+    g.m += m;
+    g.e += e;
+    g.last = t;
+    g.hours += 1;
+    if (studio) g.studio += 1;
+  }
+  return { groups, k, rows, full: span !== Infinity && all.length >= span };
+}
+
+function groupText(g, k) {
+  const sofar = g.last >= hourFloor(S.lastPoll || Date.now()) ? ' (so far)' : '';
+  if (k === 24 && g.first === g.start) return dateOnly(g.start) + sofar;
+  return `${dateOnly(g.first)}, ${hourLabel(g.first)} – ${hourLabel(g.last + 3600e3)}${sofar}`;
+}
+
+function barPath(x, w, top, base, r) {
+  if (r < 0.5) return `M${x},${base}V${top}H${x + w}V${base}Z`;
+  const k = top < base ? r : -r;
+  return `M${x},${base}V${top + k}Q${x},${top} ${x + r},${top}H${x + w - r}Q${x + w},${top} ${x + w},${top + k}V${base}Z`;
+}
+
+function renderHourly() {
+  const meta = HMETRICS[S.hmetric];
+  const views = S.hmetric === 'views';
+  const foot = remoteFor()
+    ? `Built from the public ${views ? 'view' : 'subscriber'} count, recorded about every 10 minutes by GitHub Actions${S.cfg ? ' and on every refresh while this page is open' : ''}${views ? ', so it can trail Studio during bursts' : ''}.`
+    : meta.foot;
+  $('hTitle').textContent = meta.title;
+  $('hfoot').textContent = foot + (!views && S.channel && S.channel.subs >= 1000 ? ' Above 1,000 subscribers YouTube rounds the count, so gains show up in steps.' : '');
+  const box = $('hchart');
+  const svg = $('hsvg');
+  const H0 = 220;
+  const W = sizeSvg(box, svg, H0);
+  const { groups, k, rows, full } = hourlyGroups(W - 70);
+  if (!groups.length) {
+    S.hgeom = null;
+    hideHourHover();
+    $('hlegend').hidden = true;
+    $('hsum').textContent = S.hmetric === 'subs' && S.channel && S.channel.subs == null ? 'This channel hides its subscriber count.' : 'Collecting data.';
+    s('text', { x: W / 2, y: H0 / 2, 'text-anchor': 'middle', class: 'empty' }, svg).textContent = 'Bars appear once a change is recorded.';
+    box.setAttribute('aria-label', `${meta.title} chart, collecting data`);
+    return;
+  }
+  const val = g => (meta.signed ? g.m + g.e : Math.max(0, g.m + g.e));
+  const vals = groups.map(val);
+  const ax = yAxis(Math.min(0, ...vals), Math.max(meta.min, ...vals), meta.signed);
+  const L = ax.width;
+  const R = 12;
+  const T = 10;
+  const B = 28;
+  const pw = W - L - R;
+  const ph = H0 - T - B;
+  const pitch = pw / groups.length;
+  const gap = pitch >= 8 ? 2 : pitch >= 3 ? 1 : 0;
+  const bw = Math.max(1, pitch - gap);
+  const Y = v => T + (1 - (v - ax.y0) / (ax.y1 - ax.y0)) * ph;
+  for (const v of ax.ticks) {
+    const y = Math.round(Y(v)) + 0.5;
+    s('line', { x1: L, x2: W - R, y1: y, y2: y, class: v === 0 ? 'axis' : 'grid' }, svg);
+    s('text', { x: L - 8, y: y + 4, 'text-anchor': 'end' }, svg).textContent = ax.label(v);
+  }
+  const col = s('rect', { y: T, height: ph, width: pitch, class: 'hcol', visibility: 'hidden' }, svg);
+  const base = Y(0);
+  let anyEst = false;
+  groups.forEach((g, i) => {
+    if (Math.abs(g.e) >= 0.5) anyEst = true;
+    const v = val(g);
+    if (Math.abs(v) < 0.5) return;
+    const x = L + i * pitch + gap / 2;
+    const top = Y(v);
+    const r = Math.min(3, bw / 2, Math.abs(base - top));
+    if (g.m >= 0 && g.e > 0) {
+      s('path', { d: barPath(x, bw, top, base, r), class: 'hbar est' }, svg);
+      if (g.m >= 0.5) s('path', { d: barPath(x, bw, Y(g.m), base, 0), class: 'hbar' }, svg);
+    } else {
+      const estShare = Math.abs(g.e) / (Math.abs(g.m) + Math.abs(g.e) || 1);
+      s('path', { d: barPath(x, bw, top, base, r), class: estShare > 0.5 ? 'hbar est' : 'hbar' }, svg);
+    }
+  });
+  const lstep = LABEL_STEPS.find(st => st >= k && (st / k) * pitch >= 64) || 720;
+  let lastX = -Infinity;
+  let midnights = 0;
+  groups.forEach((g, i) => {
+    const hour = new Date(g.start).getHours();
+    let show;
+    if (lstep < 24) show = hour % lstep === 0;
+    else show = hour === 0 && midnights++ % (lstep / 24) === 0;
+    if (!show) return;
+    const x = L + i * pitch;
+    if (x < L + 14 || x > W - 24 || x - lastX < 48) return;
+    lastX = x;
+    s('text', { x, y: H0 - 8, 'text-anchor': 'middle' }, svg).textContent = hour === 0 ? dateOnly(g.start) : hourLabel(g.start);
+  });
+  const sum = groups.reduce((a, g) => a + g.m + g.e, 0);
+  const span = full ? HRANGE_TEXT[S.hrange] : `since ${dateOnly(rows[0][0])}, ${hourLabel(rows[0][0])}`;
+  const each = k === 1 ? '1 hour' : k === 24 ? '1 day' : `${k} hours`;
+  $('hsum').replaceChildren(h('strong', null, meta.signed ? signed(Math.round(sum)) : fmt(Math.max(0, sum))), ` ${meta.noun} ${span} · each bar = ${each}`);
+  $('hlegend').hidden = !anyEst;
+  S.hgeom = { W, H: H0, L, T, pitch, groups, k, col };
+  box.setAttribute('aria-label', `${meta.title}, ${span}, ${groups.length} bars of ${each} each, peak ${fmt(Math.max(...vals))}`);
+  if (S.hhoverOn) showHourHover(S.hhoverIdx);
+}
+
+function showHourHover(i) {
+  const g = S.hgeom;
+  if (!g) return;
+  const idx = Math.max(0, Math.min(g.groups.length - 1, i));
+  S.hhoverOn = true;
+  S.hhoverIdx = idx;
+  const grp = g.groups[idx];
+  const x = g.L + idx * g.pitch;
+  g.col.setAttribute('x', x);
+  g.col.setAttribute('visibility', 'visible');
+  const meta = HMETRICS[S.hmetric];
+  const v = grp.m + grp.e;
+  const lines = [h('div', { class: 'thead' }, groupText(grp, g.k)), h('strong', null, `${meta.signed ? signed(Math.round(v)) : fmt(Math.max(0, v))} ${meta.noun}`)];
+  if (grp.studio) lines.push(h('div', null, grp.studio === grp.hours ? 'From YouTube Studio' : `${grp.studio} of ${grp.hours} hours from YouTube Studio`));
+  if (Math.abs(grp.e) >= 0.5) lines.push(h('div', null, Math.abs(grp.m) >= 0.5 ? `${fmt(Math.abs(grp.e))} estimated (${gapWhy()})` : `Estimated (${gapWhy()})`));
+  const tip = $('htip');
+  tip.replaceChildren(...lines);
+  placeTip(tip, x + g.pitch / 2, g.T + 4, g.W, g.H);
+}
+
+function hideHourHover() {
+  S.hhoverOn = false;
+  if (S.hgeom) S.hgeom.col.setAttribute('visibility', 'hidden');
+  $('htip').hidden = true;
+}
+
+function onHourPointer(e) {
+  const g = S.hgeom;
+  if (!g) return;
+  const r = $('hsvg').getBoundingClientRect();
+  const x = (e.clientX - r.left) * (g.W / r.width);
+  const idx = Math.floor((x - g.L) / g.pitch);
+  if (idx < 0 || idx >= g.groups.length) {
+    hideHourHover();
+    return;
+  }
+  showHourHover(idx);
+}
+
+function renderHourlyData() {
+  if (!$('hourDetails').open) return;
+  const meta = HMETRICS[S.hmetric];
+  const rows = hourlySeries();
+  const start = Math.max(0, rows.length - 500);
+  const body = [];
+  for (let j = rows.length - 1; j >= start; j--) {
+    const [t, m, e, sv] = rows[j];
+    const v = sv != null ? sv : m + e;
+    body.push(h('tr', null,
+      h('td', null, `${dateOnly(t)}, ${hourLabel(t)} – ${hourLabel(t + 3600e3)}`),
+      h('td', { class: 'num' }, meta.signed ? signed(Math.round(v)) : fmt(Math.max(0, v))),
+      h('td', { class: 'dim' }, sv != null ? 'from Studio' : Math.abs(e) >= 0.5 ? 'estimated' : '')));
+  }
+  const table = h('table', { class: 'small' },
+    h('thead', null, h('tr', null, h('th', null, 'Hour'), h('th', { class: 'num' }, meta.noun[0].toUpperCase() + meta.noun.slice(1)), h('th', null, ''))),
+    h('tbody', null, body));
+  $('hourTable').replaceChildren(table);
+  if (start > 0) $('hourTable').append(h('p', { class: 'dim small' }, `Showing the latest 500 of ${fmt(rows.length)} hours.`));
+}
+
+function setHRange(r) {
+  S.hrange = HRANGES[r] ? r : 'all';
+  store.set('ytlive.hrange', S.hrange);
+  for (const b of $('hranges').querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.hrange === S.hrange));
+  hideHourHover();
+  if (S.total != null) renderHourly();
+}
+
+function setHMetric(m) {
+  S.hmetric = HMETRICS[m] ? m : 'views';
+  store.set('ytlive.hmetric', S.hmetric);
+  for (const b of $('hmetrics').querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.hmetric === S.hmetric));
+  hideHourHover();
+  if (S.total != null) {
+    renderHourly();
+    renderHourlyData();
+  }
+}
+
+function runsOf(hist) {
+  const interval = Math.max(S.cfg ? S.cfg.interval : 30, remoteFor() ? RECORD_EVERY / 1000 : 0);
+  const runs = [];
+  let cur = [];
+  for (const p of hist) {
+    const last = cur[cur.length - 1];
+    if (last) {
+      const allowed = last[0] === 0 ? ANCHOR_MAX + 60 : 4 * Math.max(interval, last[0] / 40) + 300;
+      if (p[0] - last[0] > allowed) {
+        runs.push(cur);
+        cur = [];
+      }
+    }
+    cur.push(p);
+  }
+  if (cur.length) runs.push(cur);
+  return runs;
+}
+
+function valueAt(runs, age) {
+  for (const r of runs) {
+    if (age < r[0][0] || age > r[r.length - 1][0]) continue;
+    let lo = 0;
+    let hi = r.length - 1;
+    while (hi - lo > 1) {
+      const m = (lo + hi) >> 1;
+      if (r[m][0] <= age) lo = m;
+      else hi = m;
+    }
+    const [a0, v0] = r[lo];
+    const [a1, v1] = r[hi];
+    return a1 === a0 ? v1 : v0 + ((v1 - v0) * (age - a0)) / (a1 - a0);
+  }
+  return null;
+}
+
+function clipRun(r, win) {
+  const out = [];
+  for (let i = 0; i < r.length; i++) {
+    const p = r[i];
+    if (p[0] <= win) {
+      out.push(p);
+      continue;
+    }
+    if (out.length) {
+      const q = r[i - 1];
+      out.push([win, q[1] + ((p[1] - q[1]) * (win - q[0])) / (p[0] - q[0])]);
+    }
+    break;
+  }
+  return out;
+}
+
+function launchSeries() {
+  const out = [];
+  for (const v of S.videos.values()) {
+    const pts = effVH(v);
+    if (pts.length) out.push({ v, pts, runs: runsOf(pts), slot: slotOf(v.id) });
+  }
+  return out;
+}
+
+function picks() {
+  return S.sel.ids.slice().sort((a, b) => a[1] - b[1]).map(([id, slot]) => ({ v: S.videos.get(id), slot })).filter(x => x.v);
+}
+
+function renderLegend(series) {
+  const has = new Set(series.map(sr => sr.v.id));
+  const items = picks().map(({ v, slot }) => h('span', { class: 'key' },
+    h('span', { class: 'lk s' + (slot + 1) }),
+    h('span', { class: 'kname', title: v.title }, has.has(v.id) ? v.title : `${v.title} (no data yet)`)));
+  items.push(h('span', { class: 'key' }, h('span', { class: 'lk med' }), h('span', { class: 'kname' }, 'Median upload')));
+  items.push(h('span', { class: 'key' }, h('span', { class: 'lk ctx' }), h('span', { class: 'kname' }, 'Other uploads')));
+  $('legend').replaceChildren(...items);
+}
+
+function renderLaunch() {
+  const series = launchSeries();
+  renderLegend(series);
+  const box = $('lchart');
+  const svg = $('lsvg');
+  const H = 260;
+  const W = sizeSvg(box, svg, H);
+  const win = AGES[S.age];
+  const parts = series.map(sr => sr.runs.map(r => clipRun(r, win)).filter(p => p.length));
+  const samples = [];
+  for (let i = 0; i <= SAMPLES; i++) {
+    const a = (win * i) / SAMPLES;
+    const vals = series.map(sr => valueAt(sr.runs, a)).filter(x => x != null);
+    samples.push([a, vals.length >= 3 ? median(vals) : null]);
+  }
+  if (!parts.some(ps => ps.some(p => p.length >= 2))) {
+    S.lgeom = null;
+    hideLaunchHover();
+    s('text', { x: W / 2, y: H / 2, 'text-anchor': 'middle', class: 'empty' }, svg).textContent = `Nothing recorded in the ${AGE_TEXT[S.age]} yet.`;
+    box.setAttribute('aria-label', 'Launch curves chart, nothing recorded in this window yet');
+    return;
+  }
+  let ymax = 4;
+  for (const ps of parts) for (const p of ps) for (const q of p) ymax = Math.max(ymax, q[1]);
+  for (const m of samples) if (m[1] != null) ymax = Math.max(ymax, m[1]);
+  const ax = yAxis(0, ymax);
+  const L = ax.width;
+  const R = 16;
+  const T = 10;
+  const B = 28;
+  const pw = W - L - R;
+  const ph = H - T - B;
+  const X = a => L + (a / win) * pw;
+  const Y = v => T + (1 - v / ax.y1) * ph;
+  for (const v of ax.ticks) {
+    const y = Math.round(Y(v)) + 0.5;
+    s('line', { x1: L, x2: W - R, y1: y, y2: y, class: v === 0 ? 'axis' : 'grid' }, svg);
+    s('text', { x: L - 8, y: y + 4, 'text-anchor': 'end' }, svg).textContent = ax.label(v);
+  }
+  let lastX = -Infinity;
+  for (let a = 0; a <= win; a += AGE_TICKS[S.age]) {
+    const x = X(a);
+    if (x - lastX < 34) continue;
+    lastX = x;
+    const anchor = a === 0 ? 'start' : a === win ? 'end' : 'middle';
+    s('text', { x, y: H - 8, 'text-anchor': anchor }, svg).textContent = ageTick(a, S.age === '7d');
+  }
+  const pathOf = p => p.map((q, i) => (i ? 'L' : 'M') + X(q[0]).toFixed(1) + ',' + Y(q[1]).toFixed(1)).join('');
+  series.forEach((sr, i) => {
+    if (sr.slot >= 0) return;
+    for (const p of parts[i]) if (p.length >= 2) s('path', { d: pathOf(p), class: 'ctx' }, svg);
+  });
+  let med = '';
+  let pen = false;
+  for (const [a, m] of samples) {
+    if (m == null) {
+      pen = false;
+      continue;
+    }
+    med += (pen ? 'L' : 'M') + X(a).toFixed(1) + ',' + Y(m).toFixed(1);
+    pen = true;
+  }
+  if (med) s('path', { d: med, class: 'med' }, svg);
+  const picked = series.map((sr, i) => ({ ...sr, parts: parts[i] })).filter(sr => sr.slot >= 0).sort((a, b) => a.slot - b.slot);
+  for (const sr of picked) {
+    const cls = 's' + (sr.slot + 1);
+    for (const p of sr.parts) {
+      if (p.length >= 2) s('path', { d: pathOf(p), class: 'sel ' + cls }, svg);
+      else s('circle', { cx: X(p[0][0]), cy: Y(p[0][1]), r: 3, class: 'fill ' + cls }, svg);
+    }
+    const end = sr.pts[sr.pts.length - 1];
+    if (end[0] <= win) {
+      s('circle', { cx: X(end[0]), cy: Y(end[1]), r: 6, class: 'ring' }, svg);
+      s('circle', { cx: X(end[0]), cy: Y(end[1]), r: 4, class: 'fill ' + cls }, svg);
+    }
+  }
+  const g = s('g', { visibility: 'hidden' }, svg);
+  const dotPair = cls => [s('circle', { r: 6, class: 'ring' }, g), s('circle', { r: 4, class: 'fill ' + cls }, g)];
+  S.lhv = {
+    g,
+    line: s('line', { y1: T, y2: T + ph, class: 'xhair' }, g),
+    dots: picked.map(sr => dotPair('s' + (sr.slot + 1))),
+    med: dotPair('medf')
+  };
+  S.lgeom = { W, H, L, T, pw, ph, win, X, Y, picked, samples };
+  const named = picked.map(sr => shorten(sr.v.title, 40)).join(', ');
+  box.setAttribute('aria-label', `Launch curves, ${AGE_TEXT[S.age]} after upload${named ? ', highlighting ' + named : ''}`);
+  if (S.lhoverOn) showLaunchHover(S.lhoverIdx);
+}
+
+function showLaunchHover(i) {
+  const g = S.lgeom;
+  if (!g) return;
+  const idx = Math.max(0, Math.min(SAMPLES, i));
+  S.lhoverOn = true;
+  S.lhoverIdx = idx;
+  const [a, m] = g.samples[idx];
+  const x = g.X(a);
+  S.lhv.line.setAttribute('x1', x);
+  S.lhv.line.setAttribute('x2', x);
+  const place = (pair, val) => {
+    for (const c of pair) {
+      c.setAttribute('visibility', val == null ? 'hidden' : 'visible');
+      if (val != null) {
+        c.setAttribute('cx', x);
+        c.setAttribute('cy', g.Y(val));
+      }
+    }
+  };
+  const rows = g.picked.map((sr, k) => {
+    const val = valueAt(sr.runs, a);
+    place(S.lhv.dots[k], val);
+    return h('div', { class: 'trow' },
+      h('span', { class: 'lk s' + (sr.slot + 1) }),
+      h('strong', null, val == null ? '–' : fmt(val)),
+      h('span', { class: 'tname' }, shorten(sr.v.title, 34)));
+  });
+  place(S.lhv.med, m);
+  rows.push(h('div', { class: 'trow' }, h('span', { class: 'lk med' }), h('strong', null, m == null ? '–' : fmt(m)), h('span', { class: 'tname' }, 'Median upload')));
+  S.lhv.g.setAttribute('visibility', 'visible');
+  const tip = $('ltip');
+  tip.replaceChildren(h('div', { class: 'thead' }, `${ageText(a)} after upload`), ...rows);
+  placeTip(tip, x, g.T + 4, g.W, g.H);
+}
+
+function hideLaunchHover() {
+  S.lhoverOn = false;
+  if (S.lhv) S.lhv.g.setAttribute('visibility', 'hidden');
+  $('ltip').hidden = true;
+}
+
+function onLaunchPointer(e) {
+  const g = S.lgeom;
+  if (!g) return;
+  const r = $('lsvg').getBoundingClientRect();
+  const x = (e.clientX - r.left) * (g.W / r.width);
+  if (x < g.L - 12 || x > g.L + g.pw + 12) {
+    hideLaunchHover();
+    return;
+  }
+  showLaunchHover(Math.round(((x - g.L) / g.pw) * SAMPLES));
+}
+
+function renderLaunchNote() {
+  const el = $('launchNote');
+  const first = picks()[0];
+  const series = first ? launchSeries() : [];
+  const mine = first && series.find(sr => sr.v.id === first.v.id);
+  if (!mine) {
+    el.hidden = true;
+    return;
+  }
+  const v = mine.v;
+  const [age, views] = mine.pts[mine.pts.length - 1];
+  const others = [];
+  for (const sr of series) {
+    if (sr.v.id === v.id) continue;
+    const x = valueAt(sr.runs, age);
+    if (x != null) others.push(x);
+  }
+  const head = `“${shorten(v.title, 44)}” has ${fmt(views)} views at ${ageText(age)}`;
+  if (others.length < 3) {
+    el.textContent = `${head}. A comparison appears once 3 other uploads have been tracked to that age.`;
+  } else {
+    const m = median(others);
+    const r = views / m;
+    el.textContent = m > 0 ? `${head}: ${r >= 0.95 ? r.toFixed(1) + '×' : Math.round(r * 100) + '% of'} your median upload at the same age (${fmt(m)}).` : `${head}. Your median upload had 0 views at that age.`;
+  }
+  el.hidden = false;
+}
+
+function renderLaunchData() {
+  if (!$('launchDetails').open) return;
+  const series = launchSeries().sort((a, b) => b.v.published - a.v.published);
+  const head = h('tr', null, h('th', null, 'Upload'), MILESTONES.map(a => h('th', { class: 'num' }, ageTick(a))));
+  const medRow = h('tr', { class: 'med-row' }, h('td', null, 'Median upload'), MILESTONES.map(a => {
+    const vals = series.map(sr => valueAt(sr.runs, a)).filter(x => x != null);
+    return h('td', { class: 'num' }, vals.length >= 3 ? fmt(median(vals)) : '–');
+  }));
+  const rows = series.map(sr => h('tr', null,
+    h('td', { title: sr.v.title }, shorten(sr.v.title, 44)),
+    MILESTONES.map(a => {
+      const x = valueAt(sr.runs, a);
+      return h('td', { class: 'num' }, x == null ? '–' : fmt(x));
+    })));
+  $('launchTable').replaceChildren(h('table', { class: 'small' }, h('thead', null, head), h('tbody', null, medRow, rows)));
+}
+
+function renderStatus() {
+  if (S.cfg) {
+    const left = Math.max(0, Math.ceil((S.nextAt - Date.now()) / 1000));
+    let text = 'Connecting…';
+    let cls = 'live';
+    if (S.busy) text = 'Updating…';
+    else if (S.paused) [text, cls] = ['Paused', 'paused'];
+    else if (S.fails) [text, cls] = [`Retrying in ${left} s · ${S.note}`, 'err'];
+    else if (S.lastPoll) text = `Live · updated ${clockSec(S.lastPoll)} · next in ${left} s`;
+    $('statusText').textContent = text;
+    $('dot').className = 'dot ' + cls;
+    $('statusLink').hidden = true;
+    $('refresh').textContent = S.paused ? 'Try again' : 'Refresh now';
+    $('refresh').disabled = S.busy;
+    $('t3Value').textContent = fmt(unitsToday());
+    return;
+  }
+  if (!siteUrl()) return;
+  const R = S.remote;
+  let text;
+  let cls = 'live';
+  let stale = false;
+  if (!R) {
+    [text, cls] = S.remoteBusy ? ['Loading recorded data…', 'live'] : ['Couldn’t load the recorded data', 'err'];
+  } else {
+    const age = Date.now() - R.updated;
+    stale = age > STALE_AFTER;
+    if (S.remoteBusy) text = 'Updating…';
+    else if (stale) [text, cls] = [`No new data for ${agoText(age)} · the recorder may have stopped`, 'err'];
+    else text = `Recorded · updated ${clock(R.updated)} (${agoText(age)} ago)`;
+    if (S.remoteErr && !S.remoteBusy) text += ' · couldn’t refresh, retrying';
+  }
+  $('statusText').textContent = text;
+  $('dot').className = 'dot ' + cls;
+  const href = stale ? actionsUrl() : '';
+  $('statusLink').hidden = !href;
+  if (href) $('statusLink').href = href;
+  $('refresh').textContent = 'Refresh now';
+  $('refresh').disabled = S.remoteBusy;
+}
+
+function setRange(r) {
+  S.range = RANGES[r] ? r : 'all';
+  store.set('ytlive.range', S.range);
+  for (const b of $('ranges').querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.range === S.range));
+  hideHover();
+  renderChart();
+  renderData();
+}
+
+function setAge(a) {
+  S.age = AGES[a] ? a : '24h';
+  store.set('ytlive.age', S.age);
+  for (const b of $('ages').querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.age === S.age));
+  hideLaunchHover();
+  if (S.total != null) renderLaunch();
+}
+
+function fillIntervals(selected) {
+  const sel = Math.max(5, Number(selected) || 30);
+  const opts = INTERVALS.includes(sel) ? INTERVALS : [...INTERVALS, sel].sort((a, b) => a - b);
+  const n = Math.max(1, Math.ceil(S.videos.size / 50));
+  $('interval').replaceChildren(...opts.map(iv => {
+    const units = Math.round((86400 / iv) * n + (86400e3 / LIST_EVERY) * (1 + 2 * n) + 86400e3 / CHECK_EVERY + 86400e3 / Math.max(SUB_EVERY, iv * 1000));
+    const label = (iv < 60 ? `${iv} s` : `${iv / 60} min`) + ` · ~${(units / 1000).toFixed(1)}K units/day` + (units > 10000 ? ' (over the 10K limit)' : '');
+    return h('option', { value: String(iv) }, label);
+  }));
+  $('interval').value = String(sel);
+}
+
+function openSettings(on) {
+  $('settings').hidden = !on;
+  $('gear').setAttribute('aria-expanded', String(on));
+  if (!on) return;
+  const c = S.cfg || { key: '', channel: $('channel').value, interval: 30 };
+  $('key').value = c.key;
+  $('channel').value = c.channel;
+  $('siteUrl').value = S.site;
+  $('siteUrl').placeholder = autoSite() || DEFAULT_SITE;
+  $('formMsg').hidden = true;
+  fillIntervals(c.interval);
+}
+
+function loadCfg() {
+  const c = store.get('ytlive.cfg', null);
+  if (!c || typeof c.key !== 'string' || typeof c.channel !== 'string' || !c.key || !c.channel) return null;
+  return { key: c.key, channel: c.channel, interval: Math.max(5, Number(c.interval) || 30) };
+}
+
+function wireChart(boxId, svgId, onMove, onLeave, onKey) {
+  const svg = $(svgId);
+  svg.addEventListener('pointermove', onMove);
+  svg.addEventListener('pointerdown', onMove);
+  svg.addEventListener('pointerleave', onLeave);
+  const box = $(boxId);
+  box.addEventListener('blur', onLeave);
+  box.addEventListener('keydown', onKey);
+}
+
+function setFormMsg(text) {
+  $('formMsg').textContent = text;
+  $('formMsg').hidden = !text;
+}
+
+function onSubmit(e) {
+  e.preventDefault();
+  const key = $('key').value.trim();
+  const channel = $('channel').value.trim();
+  const raw = $('siteUrl').value.trim();
+  const site = raw ? normSite(raw) : '';
+  if (raw && !site) return setFormMsg('The recorder dashboard URL should start with https://');
+  if (key && !channel) return setFormMsg('Add your channel too.');
+  if (channel && !key) return setFormMsg('Add your API key too, or clear the channel to only view recorded data.');
+  if (!key && !(site || autoSite() || DEFAULT_SITE)) return setFormMsg('Enter an API key and channel, or a recorder dashboard URL.');
+  setFormMsg('');
+  if (site !== S.site) {
+    S.site = site;
+    if (site) store.set('ytlive.site', site);
+    else store.del('ytlive.site');
+    S.rgen += 1;
+    clearTimeout(S.remoteTimer);
+    Object.assign(S, { remote: null, remoteErr: '', remoteBusy: false, remoteDue: false, remoteFor: '', chans: [] });
+  }
+  if (key) {
+    const sameChannel = !!S.cfg && S.cfg.channel === channel && S.total != null;
+    S.cfg = { key, channel, interval: Math.max(5, Number($('interval').value) || 30) };
+    store.set('ytlive.cfg', S.cfg);
+    start(sameChannel);
+  } else {
+    S.cfg = null;
+    store.del('ytlive.cfg');
+    startView(S.total != null);
+  }
+}
+
+function init() {
+  S.cfg = loadCfg();
+  S.site = loadSite();
+  S.pick = store.get('ytlive.pick', '');
+  const savedRange = store.get('ytlive.range', 'all');
+  S.range = RANGES[savedRange] ? savedRange : 'all';
+  const savedAge = store.get('ytlive.age', '24h');
+  S.age = AGES[savedAge] ? savedAge : '24h';
+  for (const b of $('ranges').querySelectorAll('button')) {
+    b.setAttribute('aria-pressed', String(b.dataset.range === S.range));
+    b.addEventListener('click', () => setRange(b.dataset.range));
+  }
+  for (const b of $('ages').querySelectorAll('button')) {
+    b.setAttribute('aria-pressed', String(b.dataset.age === S.age));
+    b.addEventListener('click', () => setAge(b.dataset.age));
+  }
+  const savedHRange = store.get('ytlive.hrange', 'all');
+  S.hrange = HRANGES[savedHRange] ? savedHRange : 'all';
+  const savedHMetric = store.get('ytlive.hmetric', 'views');
+  S.hmetric = HMETRICS[savedHMetric] ? savedHMetric : 'views';
+  for (const b of $('hranges').querySelectorAll('button')) {
+    b.setAttribute('aria-pressed', String(b.dataset.hrange === S.hrange));
+    b.addEventListener('click', () => setHRange(b.dataset.hrange));
+  }
+  for (const b of $('hmetrics').querySelectorAll('button')) {
+    b.setAttribute('aria-pressed', String(b.dataset.hmetric === S.hmetric));
+    b.addEventListener('click', () => setHMetric(b.dataset.hmetric));
+  }
+
+  $('form').addEventListener('submit', onSubmit);
+  $('exportBtn').addEventListener('click', exportSeed);
+  $('chanPick').addEventListener('change', e => pickChannel(e.target.value));
+
+  $('reveal').addEventListener('click', () => {
+    const show = $('key').type === 'password';
+    $('key').type = show ? 'text' : 'password';
+    $('reveal').textContent = show ? 'Hide' : 'Show';
+    $('reveal').setAttribute('aria-pressed', String(show));
+  });
+
+  $('forget').addEventListener('click', () => {
+    store.del('ytlive.cfg');
+    $('key').value = '';
+    if (siteUrl()) {
+      S.cfg = null;
+      setFormMsg('');
+      startView(S.total != null);
+      return;
+    }
+    S.gen += 1;
+    clearTimeout(S.timer);
+    S.cfg = null;
+    S.busy = false;
+    hideAlert();
+    $('live').hidden = true;
+    $('gear').hidden = true;
+    $('avatar').hidden = true;
+    $('title').textContent = 'Live view total';
+    $('subtitle').textContent = DEFAULT_SUB;
+    $('start').disabled = false;
+    $('start').textContent = 'Start';
+    document.title = 'Live view total';
+    openSettings(true);
+  });
+
+  $('gear').addEventListener('click', () => openSettings($('settings').hidden));
+  $('refresh').addEventListener('click', () => {
+    if (!S.cfg) fetchRemote(true);
+    else if (S.paused) start(true);
+    else cycle(false);
+  });
+
+  wireChart('chart', 'svg', onPointer, hideHover, e => {
+    if (!S.geom) return;
+    const n = S.geom.vis.length;
+    let i = S.hoverOn ? S.hoverIdx : n - 1;
+    if (e.key === 'ArrowLeft') i -= 1;
+    else if (e.key === 'ArrowRight') i += 1;
+    else if (e.key === 'Home') i = 0;
+    else if (e.key === 'End') i = n - 1;
+    else if (e.key === 'Escape') {
+      hideHover();
+      return;
+    } else return;
+    e.preventDefault();
+    showHover(i);
+  });
+  $('chart').addEventListener('focus', () => {
+    if (S.geom && $('chart').matches(':focus-visible')) showHover(S.geom.vis.length - 1);
+  });
+
+  wireChart('lchart', 'lsvg', onLaunchPointer, hideLaunchHover, e => {
+    if (!S.lgeom) return;
+    let i = S.lhoverOn ? S.lhoverIdx : SAMPLES;
+    if (e.key === 'ArrowLeft') i -= 1;
+    else if (e.key === 'ArrowRight') i += 1;
+    else if (e.key === 'Home') i = 0;
+    else if (e.key === 'End') i = SAMPLES;
+    else if (e.key === 'Escape') {
+      hideLaunchHover();
+      return;
+    } else return;
+    e.preventDefault();
+    showLaunchHover(i);
+  });
+  $('lchart').addEventListener('focus', () => {
+    if (S.lgeom && $('lchart').matches(':focus-visible')) showLaunchHover(SAMPLES);
+  });
+
+  wireChart('hchart', 'hsvg', onHourPointer, hideHourHover, e => {
+    if (!S.hgeom) return;
+    const n = S.hgeom.groups.length;
+    let i = S.hhoverOn ? S.hhoverIdx : n - 1;
+    if (e.key === 'ArrowLeft') i -= 1;
+    else if (e.key === 'ArrowRight') i += 1;
+    else if (e.key === 'Home') i = 0;
+    else if (e.key === 'End') i = n - 1;
+    else if (e.key === 'Escape') {
+      hideHourHover();
+      return;
+    } else return;
+    e.preventDefault();
+    showHourHover(i);
+  });
+  $('hchart').addEventListener('focus', () => {
+    if (S.hgeom && $('hchart').matches(':focus-visible')) showHourHover(S.hgeom.groups.length - 1);
+  });
+  $('hourDetails').addEventListener('toggle', renderHourlyData);
+  $('importBtn').addEventListener('click', () => importStudioHours($('importText').value));
+  $('importClear').addEventListener('click', clearStudioHours);
+  $('importFile').addEventListener('change', async () => {
+    const f = $('importFile').files[0];
+    if (!f) return;
+    importStudioHours(await f.text());
+    $('importFile').value = '';
+  });
+
+  for (const id of ['subsTile', 'likesTile', 'commentsTile']) $(id).addEventListener('animationend', () => $(id).classList.remove('bump'));
+  $('dataDetails').addEventListener('toggle', renderData);
+  $('launchDetails').addEventListener('toggle', renderLaunchData);
+
+  let rz = 0;
+  const ro = new ResizeObserver(() => {
+    cancelAnimationFrame(rz);
+    rz = requestAnimationFrame(() => {
+      if (S.total == null) return;
+      renderChart();
+      renderHourly();
+      renderLaunch();
+    });
+  });
+  ro.observe($('chart'));
+  ro.observe($('hchart'));
+  ro.observe($('lchart'));
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    if (S.cfg && !S.paused && !S.busy && S.nextAt && Date.now() >= S.nextAt - 1000) cycle(false);
+    if (S.remoteDue) fetchRemote(false);
+  });
+
+  setInterval(renderStatus, 1000);
+
+  if (S.cfg) {
+    $('key').value = S.cfg.key;
+    $('channel').value = S.cfg.channel;
+    fillIntervals(S.cfg.interval);
+    start();
+  } else if (siteUrl()) {
+    fillIntervals(30);
+    startView(false);
+  } else {
+    openSettings(true);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
