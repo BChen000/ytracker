@@ -22,6 +22,7 @@ VH_MAX = 1_500
 VH_RETIRED = 80
 VH_VIDEOS = 300
 BACKFILL_MAX = 86_400_000
+STREAM_KEEP = 7 * 86_400_000
 
 
 def env(name, default=''):
@@ -160,6 +161,20 @@ def track_hours(H, pts, views, pub):
         H['last'] = [NOW, views]
     if H['first'] is None:
         H['first'] = [NOW, views]
+
+
+def track_stream(pts, views):
+    pts = [p for p in pts if isinstance(p, list) and len(p) == 2 and num(p[0]) and num(p[1])] if isinstance(pts, list) else []
+    if not pts or NOW > pts[-1][0]:
+        if len(pts) >= 2 and pts[-1][1] == views and pts[-2][1] == views:
+            pts[-1] = [NOW, views]
+        else:
+            pts.append([NOW, views])
+    cut = NOW - STREAM_KEEP
+    i = 0
+    while i + 1 < len(pts) and pts[i + 1][0] <= cut:
+        i += 1
+    return pts[i:]
 
 
 def retire(pts):
@@ -374,6 +389,13 @@ def record_channel(query, store, seeds):
 
     path = os.path.join(store, 'data', c['id'] + '.json')
     state = load_state(load(path))
+    stream_path = os.path.join(store, 'data', c['id'] + '.stream.json')
+    try:
+        stream = load(stream_path).get('videos')
+    except (ValueError, OSError):
+        stream = None
+    if not isinstance(stream, dict):
+        stream = {}
     for mark, seed, seed_path in seeds.get(c['id'], []):
         merge_seed(state, mark, seed, seed_path)
 
@@ -400,6 +422,7 @@ def record_channel(query, store, seeds):
         H = state['vhour'].setdefault(it['id'], {'first': None, 'last': None, 'b': {}})
         pts = state['vh'].get(it['id']) if pub else None
         track_hours(H, [[pub + int(p[0]) * 1000, p[1]] for p in pts or [] if isinstance(p, list) and len(p) >= 2 and num(p[0]) and num(p[1])], views, pub)
+        stream[it['id']] = track_stream(stream.get(it['id']), views)
     subs = None if st.get('hiddenSubscriberCount') else (int(st['subscriberCount']) if 'subscriberCount' in st else None)
 
     for key, value in (('views', total), ('subs', subs)):
@@ -425,15 +448,18 @@ def record_channel(query, store, seeds):
         age = (NOW - published[vid]) / 1000 if published.get(vid) else LAUNCH_MAX + 1
         vh[vid] = retire(pts) if age > LAUNCH_MAX else pts
 
+    recent = sorted(published, key=lambda v: published[v], reverse=True)[:VH_VIDEOS]
     vhour = {}
-    for vid in sorted(published, key=lambda v: published[v], reverse=True)[:VH_VIDEOS]:
+    for vid in recent:
         H = state['vhour'].get(vid)
         if H and H['last']:
             b = [[hs, round(x[1], 2), round(x[2], 2)] for hs, x in sorted(H['b'].items())]
             vhour[vid] = {'first': H['first'], 'last': H['last'], 'b': [x for x in b if x[1] or x[2]]}
 
+    write(stream_path, {'v': 1, 'updated': NOW, 'videos': {vid: stream[vid] for vid in recent if stream.get(vid)}})
+
     handle = sn.get('customUrl') or ''
-    names ={norm(x) for x in (c['id'], sn.get('title'), handle, channel_query(query).get('forHandle'))} - {''}
+    names = {norm(x) for x in (c['id'], sn.get('title'), handle, channel_query(query).get('forHandle'))} - {''}
     studio = dict(state['seed_studio'])
     studio.update(studio_hours(names))
     round2 = lambda x: round(x, 2)
