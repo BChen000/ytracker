@@ -191,6 +191,17 @@ h2 .count { color: var(--text-2); font-weight: 400; }
 .dates input { width: auto; padding: 5px 8px; font-size: 13px; }
 .nth { display: block; font-size: 12px; }
 td.pub { white-space: nowrap; }
+#hsvg { cursor: pointer; }
+.hsel { fill: var(--raised); stroke: var(--border); stroke-width: 1; }
+.zoom { margin: 12px 0 4px; padding: 12px 14px 4px; border: 1px solid var(--border); border-radius: 10px; background: var(--page); }
+.zoom-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.zoom-title { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+.zoom-title strong { font-size: 14px; }
+#zSum { font-size: 13px; color: var(--text-2); }
+#zSum b { color: var(--text); font-variant-numeric: tabular-nums; }
+.zbtn { flex: none; width: 32px; height: 32px; padding: 0; font-size: 18px; line-height: 1; }
+.line.est { stroke-dasharray: 4 4; opacity: 0.5; }
+.zdot { fill: var(--series); }
 .hsum { margin: 0 0 8px; font-size: 13px; color: var(--text-2); }
 .hsum strong { color: var(--text); font-size: 15px; font-variant-numeric: tabular-nums; }
 .hbar { fill: var(--series); }
@@ -244,6 +255,10 @@ tr.bump td { animation: flash 1.6s ease-out; }
   .pub, .com, .since { display: none; }
   .uploads td, .uploads th { padding-left: 6px; padding-right: 6px; }
   .kname { max-width: 150px; }
+  .zoom { padding: 10px 10px 2px; }
+  .zoom-head { flex-wrap: wrap; }
+  .zoom-title { order: -1; flex-basis: 100%; margin-bottom: 4px; }
+  #zClose { margin-left: auto; }
 }
 </style>
 </head>
@@ -403,6 +418,23 @@ tr.bump td { animation: flash 1.6s ease-out; }
         <svg id="hsvg" aria-hidden="true"></svg>
         <div id="htip" class="tip" role="status" aria-live="polite" hidden></div>
         <span id="hchartHint" class="sr">Use the left and right arrow keys to read each bar.</span>
+      </div>
+      <div id="zoom" class="zoom" hidden>
+        <div class="zoom-head">
+          <button id="zPrev" class="btn zbtn" type="button" aria-label="Previous">‹</button>
+          <div class="zoom-title">
+            <strong id="zTitle"></strong>
+            <span id="zSum"></span>
+          </div>
+          <button id="zNext" class="btn zbtn" type="button" aria-label="Next">›</button>
+          <button id="zClose" class="btn zbtn" type="button" aria-label="Close zoom">×</button>
+        </div>
+        <div id="zchart" class="chart" tabindex="0" role="group" aria-roledescription="chart" aria-describedby="zchartHint">
+          <svg id="zsvg" aria-hidden="true"></svg>
+          <div id="ztip" class="tip" role="status" aria-live="polite" hidden></div>
+          <span id="zchartHint" class="sr">Use the left and right arrow keys to read each reading.</span>
+        </div>
+        <p id="zfoot" class="foot"></p>
       </div>
       <p id="hfoot" class="foot"></p>
       <details id="hourDetails" class="data">
@@ -641,6 +673,13 @@ const S = {
   hgeom: null,
   hhoverOn: false,
   hhoverIdx: 0,
+  zoom: null,
+  zgeom: null,
+  zhoverOn: false,
+  zhoverIdx: 0,
+  vlive: new Map(),
+  vstream: null,
+  vstreamBusy: false,
   raf: 0,
   bumpTimer: 0,
   site: '',
@@ -943,6 +982,15 @@ function recordVideo(v, now) {
   v.dirty = true;
 }
 
+function liveVideo(v, now) {
+  let pts = S.vlive.get(v.id);
+  if (!pts) S.vlive.set(v.id, (pts = []));
+  const n = pts.length;
+  if (n >= 2 && pts[n - 1][1] === v.views && pts[n - 2][1] === v.views) pts[n - 1] = [now, v.views];
+  else pts.push([now, v.views]);
+  if (pts.length > 4000) pts.splice(0, pts.length - 4000);
+}
+
 function saveVideoHists() {
   for (const v of S.videos.values()) {
     if (!v.dirty) continue;
@@ -994,7 +1042,10 @@ async function cycle(forceList) {
     record(total, now);
     updateHourly('views', now, total);
     updateHourly('subs', S.channel.checked, S.channel.subs);
-    for (const v of S.videos.values()) recordVideo(v, now);
+    for (const v of S.videos.values()) {
+      recordVideo(v, now);
+      liveVideo(v, now);
+    }
     saveVideoHists();
     S.prevPoll = now;
     S.prevTotal = total;
@@ -1525,6 +1576,10 @@ function resetState(keepView) {
     hvideoFor: '',
     hvsig: null,
     hgeom: null,
+    zoom: null,
+    zgeom: null,
+    vlive: new Map(),
+    vstream: null,
     hist: [],
     total: null,
     likes: null,
@@ -1551,6 +1606,8 @@ function resetState(keepView) {
   hideHover();
   hideLaunchHover();
   hideHourHover();
+  hideZoomHover();
+  $('zoom').hidden = true;
   renderChanPick();
 }
 
@@ -2378,6 +2435,11 @@ function renderHControls(all) {
 }
 
 function renderHourly() {
+  drawHourly();
+  renderZoom();
+}
+
+function drawHourly() {
   const meta = HMETRICS[S.hmetric];
   const views = S.hmetric === 'views';
   const v = curVideo();
@@ -2436,6 +2498,17 @@ function renderHourly() {
     s('line', { x1: L, x2: W - R, y1: y, y2: y, class: v === 0 ? 'axis' : 'grid' }, svg);
     s('text', { x: L - 8, y: y + 4, 'text-anchor': 'end' }, svg).textContent = ax.label(v);
   }
+  let zFirst = -1;
+  let zLast = -1;
+  if (S.zoom) {
+    groups.forEach((g, i) => {
+      if (g.start < S.zoom.b && g.start + k * 3600e3 > S.zoom.a) {
+        if (zFirst < 0) zFirst = i;
+        zLast = i;
+      }
+    });
+  }
+  if (zFirst >= 0) s('rect', { x: L + zFirst * pitch, y: T, width: (zLast - zFirst + 1) * pitch, height: ph, class: 'hsel' }, svg);
   const col = s('rect', { y: T, height: ph, width: pitch, class: 'hcol', visibility: 'hidden' }, svg);
   const base = Y(0);
   let anyEst = false;
@@ -2470,7 +2543,7 @@ function renderHourly() {
   });
   const sum = groups.reduce((a, g) => a + g.m + g.e, 0);
   const each = k === 1 ? '1 hour' : k === 24 ? '1 day' : `${k} hours`;
-  $('hsum').replaceChildren(h('strong', null, meta.signed ? signed(Math.round(sum)) : fmt(Math.max(0, sum))), ` ${meta.noun} ${label} · each bar = ${each}`);
+  $('hsum').replaceChildren(h('strong', null, meta.signed ? signed(Math.round(sum)) : fmt(Math.max(0, sum))), ` ${meta.noun} ${label} · each bar = ${each} · click a bar to zoom in`);
   $('hlegend').hidden = !anyEst;
   S.hgeom = { W, H: H0, L, T, pitch, groups, k, col };
   box.setAttribute('aria-label', `${title}, ${label}, ${groups.length} bars of ${each} each, peak ${fmt(Math.max(...vals))}`);
@@ -2514,6 +2587,280 @@ function onHourPointer(e) {
     return;
   }
   showHourHover(idx);
+}
+
+function zoomTitle(a, b) {
+  if (new Date(a).getHours() === 0 && b - a >= 86400e3) return dateOnly(a);
+  const end = dateOnly(b - 1) !== dateOnly(a) && new Date(b).getHours() !== 0 ? `${dateOnly(b)}, ${hourLabel(b)}` : hourLabel(b);
+  return `${dateOnly(a)}, ${hourLabel(a)} – ${end}`;
+}
+
+function tidyPoints(pts) {
+  pts.sort((x, y) => x[0] - y[0]);
+  const out = [];
+  for (const p of pts) {
+    const q = out[out.length - 1];
+    if (q && p[0] - q[0] < 15e3) out[out.length - 1] = p;
+    else out.push(p);
+  }
+  return out;
+}
+
+function channelPoints(key) {
+  const out = [];
+  if (key === 'subs') {
+    const R = remoteFor();
+    if (R) for (const x of R.samples) if (x[2] != null) out.push([x[0], x[2]]);
+    if (S.channel && S.channel.subs != null) out.push([S.channel.checked || S.lastPoll, S.channel.subs]);
+  } else {
+    out.push(...effHist());
+    if (S.total != null && S.lastPoll) out.push([S.lastPoll, S.total]);
+  }
+  return tidyPoints(out.filter(p => p[0]));
+}
+
+function videoPoints(v) {
+  const out = [];
+  const st = S.vstream && S.channel && S.vstream.ch === S.channel.id ? S.vstream.map.get(v.id) : null;
+  if (st) out.push(...st);
+  if (v.published) for (const p of effVH(v)) out.push([v.published + p[0] * 1000, p[1]]);
+  const live = S.vlive.get(v.id);
+  if (live) out.push(...live);
+  if (S.lastPoll) out.push([S.lastPoll, v.views]);
+  return tidyPoints(out);
+}
+
+async function loadStream() {
+  const R = remoteFor();
+  const ch = S.channel;
+  if (!R || !ch || S.vstreamBusy) return;
+  if (S.vstream && S.vstream.ch === ch.id && S.vstream.updated >= R.updated) return;
+  S.vstreamBusy = true;
+  const map = new Map();
+  let missing = false;
+  try {
+    const d = await getJson(`${siteUrl()}data/${encodeURIComponent(ch.id)}.stream.json`);
+    const src = d && d.videos && typeof d.videos === 'object' ? d.videos : {};
+    for (const [id, pts] of Object.entries(src)) {
+      if (!Array.isArray(pts)) continue;
+      const clean = pts.filter(p => Array.isArray(p) && p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]));
+      if (clean.length) map.set(id, clean);
+    }
+  } catch (e) {
+    missing = e.kind === 'missing';
+  }
+  S.vstreamBusy = false;
+  if (!S.channel || S.channel.id !== ch.id) return;
+  S.vstream = { ch: ch.id, updated: R.updated, map, missing };
+  if (S.zoom) renderZoom();
+}
+
+function openZoom(i) {
+  const g = S.hgeom;
+  const grp = g && g.groups[i];
+  if (!grp) return;
+  S.zoom = { a: grp.start, b: grp.start + g.k * 3600e3 };
+  hideZoomHover();
+  renderHourly();
+  $('zoom').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+function shiftZoom(dir) {
+  const z = S.zoom;
+  if (!z) return;
+  const span = z.b - z.a;
+  const a = z.a + dir * span;
+  if (dir > 0 && a > (S.lastPoll || Date.now())) return;
+  S.zoom = { a, b: a + span };
+  hideZoomHover();
+  renderHourly();
+}
+
+function closeZoom() {
+  S.zoom = null;
+  hideZoomHover();
+  renderHourly();
+}
+
+function renderZoom() {
+  const z = S.zoom;
+  const panel = $('zoom');
+  if (!z || S.total == null) {
+    panel.hidden = true;
+    S.zgeom = null;
+    return;
+  }
+  panel.hidden = false;
+  const v = curVideo();
+  const key = v ? 'views' : S.hmetric;
+  const meta = HMETRICS[key];
+  if (v) loadStream();
+  const pts = v ? videoPoints(v) : channelPoints(key);
+  const { a, b } = z;
+  const span = b - a;
+  let i = 0;
+  while (i < pts.length && pts[i][0] < a) i++;
+  let j = i;
+  while (j < pts.length && pts[j][0] <= b) j++;
+  const inside = pts.slice(i, j);
+  const chain = (i > 0 ? [pts[i - 1]] : []).concat(inside, j < pts.length ? [pts[j]] : []);
+  const at = (p, q, t) => p[1] + ((q[1] - p[1]) * (t - p[0])) / (q[0] - p[0] || 1);
+  const segs = [];
+  for (let k = 1; k < chain.length; k++) {
+    const p = chain[k - 1];
+    const q = chain[k];
+    const t0 = Math.max(a, p[0]);
+    const t1 = Math.min(b, q[0]);
+    if (t1 > t0) segs.push({ t0, v0: at(p, q, t0), t1, v1: at(p, q, t1), est: q[0] - p[0] > GAP_MAX });
+  }
+  const now = S.lastPoll || Date.now();
+  const hours = Math.round(span / 3600e3);
+  $('zTitle').textContent = zoomTitle(a, b) + (v ? ` · ${shorten(v.title, 40)}` : '');
+  $('zPrev').disabled = !pts.length || pts[0][0] >= a;
+  $('zNext').disabled = b > now;
+  const base = segs.length ? segs[0].v0 : inside.length ? inside[0][1] : null;
+  const notes = [];
+  const src = v ? 'this upload’s public view count' : key === 'subs' ? 'the public subscriber count' : 'the channel’s public view count';
+  notes.push(remoteFor()
+    ? `Dots are readings of ${src}: about every 10 minutes from GitHub${S.cfg && key === 'views' ? ', and every few seconds while this page is open' : ''}.`
+    : `Dots are readings of ${src}, taken while this page is open.`);
+  if (segs.some(sg => sg.est)) notes.push('Dashed where readings were more than 30 minutes apart.');
+  if (!v && inside.length <= 1 && b < now - 7 * 86400e3) notes.push('Readings older than 7 days are kept hourly.');
+  if (v && S.vstream && S.vstream.missing) notes.push('Upload the latest record.py to your repo to keep 10-minute readings for each upload.');
+  $('zfoot').textContent = notes.join(' ');
+  const box = $('zchart');
+  const svg = $('zsvg');
+  const H0 = 190;
+  const W = sizeSvg(box, svg, H0);
+  if (base == null) {
+    S.zgeom = null;
+    hideZoomHover();
+    $('zSum').textContent = 'No readings here.';
+    s('text', { x: W / 2, y: H0 / 2, 'text-anchor': 'middle', class: 'empty' }, svg).textContent = 'Nothing was recorded in this stretch.';
+    box.setAttribute('aria-label', `${$('zTitle').textContent}, no readings`);
+    return;
+  }
+  const gain = segs.length ? segs[segs.length - 1].v1 - base : 0;
+  const period = hours === 1 ? 'this hour' : hours === 24 ? 'this day' : `these ${hours} hours`;
+  const noun = Math.abs(Math.round(gain)) === 1 ? meta.noun.slice(0, -1) : meta.noun;
+  const sum = [h('b', null, signed(Math.round(gain))), ` ${noun} ${period}${b > now ? ' so far' : ''}`];
+  if (key === 'views' && !v) {
+    const H = effHourly('views');
+    let sv = 0;
+    let n = 0;
+    for (let t = a; t < b; t += 3600e3) {
+      const bk = H && H.map.get(t);
+      if (bk && bk[3] != null) {
+        sv += bk[3];
+        n += 1;
+      }
+    }
+    if (n) sum.push(` · Studio counted ${fmt(sv)}${n < hours ? ` for ${n} of ${hours} hours` : ''}`);
+  }
+  sum.push(` · ${fmt(inside.length)} reading${inside.length === 1 ? '' : 's'}`);
+  $('zSum').replaceChildren(...sum);
+  const vals = inside.map(p => p[1] - base).concat(segs.flatMap(sg => [sg.v0 - base, sg.v1 - base]));
+  const lo = Math.min(0, ...vals);
+  const ax = yAxis(lo, Math.max(meta.min, ...vals), lo < 0);
+  const L = ax.width;
+  const R = 14;
+  const T = 10;
+  const B = 28;
+  const pw = W - L - R;
+  const ph = H0 - T - B;
+  const X = t => L + ((t - a) / span) * pw;
+  const Y = val => T + (1 - (val - ax.y0) / (ax.y1 - ax.y0)) * ph;
+  for (const val of ax.ticks) {
+    const y = Math.round(Y(val)) + 0.5;
+    s('line', { x1: L, x2: W - R, y1: y, y2: y, class: val === 0 ? 'axis' : 'grid' }, svg);
+    s('text', { x: L - 8, y: y + 4, 'text-anchor': 'end' }, svg).textContent = (val > 0 ? '+' : '') + ax.label(val);
+  }
+  const maxTicks = Math.max(2, Math.floor(pw / 80));
+  const xs = X_STEPS.find(st => span / st <= maxTicks) || X_STEPS[X_STEPS.length - 1];
+  const off = new Date(a).getTimezoneOffset() * 60e3;
+  for (let t = Math.ceil((a - off) / xs) * xs + off; t <= b; t += xs) {
+    const x = X(t);
+    if (x < L + 20 || x > W - 20) continue;
+    const dt = new Date(t);
+    s('text', { x, y: H0 - 8, 'text-anchor': 'middle' }, svg).textContent = dt.getHours() === 0 && dt.getMinutes() === 0 ? dateOnly(t) : xs >= 3600e3 ? hourLabel(t) : clock(t);
+  }
+  let path = '';
+  let est = null;
+  const flush = () => {
+    if (path) s('path', { d: path, class: est ? 'line est' : 'line' }, svg);
+    path = '';
+  };
+  for (const sg of segs) {
+    if (sg.est !== est || !path) {
+      flush();
+      est = sg.est;
+      path = `M${X(sg.t0).toFixed(1)},${Y(sg.v0 - base).toFixed(1)}`;
+    }
+    path += `L${X(sg.t1).toFixed(1)},${Y(sg.v1 - base).toFixed(1)}`;
+  }
+  flush();
+  if (inside.length <= 150) for (const p of inside) s('circle', { cx: X(p[0]), cy: Y(p[1] - base), r: 2.5, class: 'zdot' }, svg);
+  if (b > now && inside.length) {
+    const last = inside[inside.length - 1];
+    s('circle', { cx: X(last[0]), cy: Y(last[1] - base), r: 6, class: 'ring' }, svg);
+    s('circle', { cx: X(last[0]), cy: Y(last[1] - base), r: 4, class: 'mark' }, svg);
+  }
+  const g = s('g', { visibility: 'hidden' }, svg);
+  S.zhv = {
+    g,
+    line: s('line', { y1: T, y2: T + ph, class: 'xhair' }, g),
+    ring: s('circle', { r: 6, class: 'ring' }, g),
+    dot: s('circle', { r: 4, class: 'mark' }, g)
+  };
+  S.zgeom = { W, H: H0, L, T, pw, ph, a, span, X, Y, base, inside, key };
+  box.setAttribute('aria-label', `${$('zTitle').textContent}: ${signed(Math.round(gain))} ${meta.noun}, ${inside.length} readings`);
+  if (S.zhoverOn) showZoomHover(S.zhoverIdx);
+}
+
+function showZoomHover(i) {
+  const g = S.zgeom;
+  if (!g || !g.inside.length) return;
+  const idx = Math.max(0, Math.min(g.inside.length - 1, i));
+  S.zhoverOn = true;
+  S.zhoverIdx = idx;
+  const [t, val] = g.inside[idx];
+  const x = g.X(t);
+  const y = g.Y(val - g.base);
+  S.zhv.line.setAttribute('x1', x);
+  S.zhv.line.setAttribute('x2', x);
+  for (const c of [S.zhv.ring, S.zhv.dot]) {
+    c.setAttribute('cx', x);
+    c.setAttribute('cy', y);
+  }
+  S.zhv.g.setAttribute('visibility', 'visible');
+  const tip = $('ztip');
+  tip.replaceChildren(
+    h('strong', null, `${signed(Math.round(val - g.base))} since ${clock(g.a)}`),
+    h('div', null, `${fmt(val)} ${g.key === 'subs' ? 'subscribers' : 'views'} in total`),
+    h('div', null, clockSec(t)));
+  tip.hidden = false;
+  placeTip(tip, x, y - tip.offsetHeight - 12, g.W, g.H);
+}
+
+function hideZoomHover() {
+  S.zhoverOn = false;
+  if (S.zhv) S.zhv.g.setAttribute('visibility', 'hidden');
+  $('ztip').hidden = true;
+}
+
+function onZoomPointer(e) {
+  const g = S.zgeom;
+  if (!g || !g.inside.length) return;
+  const r = $('zsvg').getBoundingClientRect();
+  const x = (e.clientX - r.left) * (g.W / r.width);
+  if (x < g.L - 12 || x > g.L + g.pw + 12) {
+    hideZoomHover();
+    return;
+  }
+  const t = g.a + ((x - g.L) / g.pw) * g.span;
+  let best = 0;
+  for (let k = 1; k < g.inside.length; k++) if (Math.abs(g.inside[k][0] - t) < Math.abs(g.inside[best][0] - t)) best = k;
+  showZoomHover(best);
 }
 
 function renderHourlyData() {
@@ -3119,10 +3466,42 @@ function init() {
     else if (e.key === 'Escape') {
       hideHourHover();
       return;
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (S.hhoverOn) openZoom(S.hhoverIdx);
+      return;
     } else return;
     e.preventDefault();
     showHourHover(i);
   });
+  $('hsvg').addEventListener('click', e => {
+    const g = S.hgeom;
+    if (!g) return;
+    const r = $('hsvg').getBoundingClientRect();
+    const idx = Math.floor(((e.clientX - r.left) * (g.W / r.width) - g.L) / g.pitch);
+    if (idx >= 0 && idx < g.groups.length) openZoom(idx);
+  });
+  wireChart('zchart', 'zsvg', onZoomPointer, hideZoomHover, e => {
+    const g = S.zgeom;
+    if (e.key === 'Escape') {
+      if (S.zhoverOn) hideZoomHover();
+      else closeZoom();
+      return;
+    }
+    if (!g || !g.inside.length) return;
+    const n = g.inside.length;
+    let i = S.zhoverOn ? S.zhoverIdx : n - 1;
+    if (e.key === 'ArrowLeft') i -= 1;
+    else if (e.key === 'ArrowRight') i += 1;
+    else if (e.key === 'Home') i = 0;
+    else if (e.key === 'End') i = n - 1;
+    else return;
+    e.preventDefault();
+    showZoomHover(i);
+  });
+  $('zPrev').addEventListener('click', () => shiftZoom(-1));
+  $('zNext').addEventListener('click', () => shiftZoom(1));
+  $('zClose').addEventListener('click', closeZoom);
   $('hchart').addEventListener('focus', () => {
     if (S.hgeom && $('hchart').matches(':focus-visible')) showHourHover(S.hgeom.groups.length - 1);
   });
