@@ -185,6 +185,12 @@ h2 .count { color: var(--text-2); font-weight: 400; }
 .launch-note { margin: 0 0 10px; font-size: 13px; }
 .foot { margin: 6px 0 0; font-size: 12px; color: var(--text-2); }
 .f-label.gapl { margin-left: 8px; }
+.hv { display: inline-flex; align-items: center; gap: 10px; min-width: 0; max-width: 100%; }
+.hv select { width: auto; min-width: 0; max-width: min(340px, 72vw); padding: 6px 10px; font-size: 13px; text-overflow: ellipsis; }
+.dates { display: inline-flex; align-items: center; gap: 6px; }
+.dates input { width: auto; padding: 5px 8px; font-size: 13px; }
+.nth { display: block; font-size: 12px; }
+td.pub { white-space: nowrap; }
 .hsum { margin: 0 0 8px; font-size: 13px; color: var(--text-2); }
 .hsum strong { color: var(--text); font-size: 15px; font-variant-numeric: tabular-nums; }
 .hbar { fill: var(--series); }
@@ -368,12 +374,22 @@ tr.bump td { animation: flash 1.6s ease-out; }
         <button type="button" data-hmetric="views">Views</button>
         <button type="button" data-hmetric="subs">Subscribers</button>
       </div>
+      <span id="hvWrap" class="hv">
+        <label class="f-label gapl" for="hVideo">Video</label>
+        <select id="hVideo"><option value="">All uploads</option></select>
+      </span>
       <span id="hrLabel" class="f-label gapl">Period</span>
       <div id="hranges" class="seg" role="group" aria-labelledby="hrLabel">
         <button type="button" data-hrange="48h">48h</button>
         <button type="button" data-hrange="7d">7 days</button>
         <button type="button" data-hrange="all">All</button>
+        <button type="button" data-hrange="dates">Dates</button>
       </div>
+      <span id="hdates" class="dates" hidden>
+        <input type="date" id="hFrom" aria-label="From date">
+        <span class="f-label">to</span>
+        <input type="date" id="hTo" aria-label="To date">
+      </span>
     </div>
 
     <section class="card chart-card">
@@ -457,12 +473,14 @@ const LIST_EVERY = 600e3;
 const CHECK_EVERY = 120e3;
 const SUB_EVERY = 60e3;
 const GAP_MAX = 1800e3;
-const DEFAULT_SITE = 'https://jwang2007.github.io/ytracker/';
+const DEFAULT_SITE = 'https://bchen000.github.io/ytracker/';
 const RECORD_EVERY = 600e3;
 const REMOTE_RETRY = 120e3;
 const STALE_AFTER = 2700e3;
 const ENG_IDX = { subs: 2, likes: 3, comments: 4 };
 const HRANGES = { '48h': 48, '7d': 168, all: Infinity };
+const HR_MODES = ['48h', '7d', 'all', 'dates'];
+const BACKFILL_MAX = 86400e3;
 const HRANGE_TEXT = { '48h': 'in the last 48 hours', '7d': 'in the last 7 days' };
 const MERGE = [1, 2, 3, 6, 12, 24];
 const LABEL_STEPS = [1, 2, 3, 6, 12, 24, 48, 72, 96, 168, 336, 720];
@@ -616,6 +634,10 @@ const S = {
   hourly: { views: null, subs: null },
   hrange: 'all',
   hmetric: 'views',
+  hvideo: '',
+  hvideoFor: '',
+  hvsig: null,
+  hdates: null,
   hgeom: null,
   hhoverOn: false,
   hhoverIdx: 0,
@@ -1210,6 +1232,26 @@ function prepRemote(d) {
     const clean = pts.filter(p => Array.isArray(p) && num(p[0]) && num(p[1])).sort((a, b) => a[0] - b[0]);
     if (clean.length) vh.set(id, clean);
   }
+  const vhour = new Map();
+  const read = r => (Array.isArray(r) && r.length === 2 && num(r[0]) && num(r[1]) ? [r[0], r[1]] : null);
+  for (const [id, x] of Object.entries(d.vhour && typeof d.vhour === 'object' ? d.vhour : {})) {
+    const first = x && read(x.first);
+    const last = x && read(x.last);
+    if (!first || !last || !Array.isArray(x.b)) continue;
+    const map = new Map();
+    for (const b of x.b) {
+      if (!Array.isArray(b) || !num(b[0]) || !num(b[1]) || !num(b[2])) continue;
+      const hs = hourFloor(b[0]);
+      const cur = map.get(hs);
+      if (cur) {
+        cur[1] += b[1];
+        cur[2] += b[2];
+      } else {
+        map.set(hs, [hs, b[1], b[2], null]);
+      }
+    }
+    vhour.set(id, { first, last, map });
+  }
   const ch = d.channel;
   const t = num(L.t) ? L.t : num(d.updated) ? d.updated : Date.now();
   return {
@@ -1220,7 +1262,8 @@ function prepRemote(d) {
     hist: samples.map(x => [x[0], x[1]]),
     hourly,
     studio,
-    vh
+    vh,
+    vhour
   };
 }
 
@@ -1479,6 +1522,8 @@ function resetState(keepView) {
     known: new Set(),
     sel: { auto: true, ids: [] },
     hourly: { views: null, subs: null },
+    hvideoFor: '',
+    hvsig: null,
     hgeom: null,
     hist: [],
     total: null,
@@ -1796,12 +1841,38 @@ function makeRow() {
   return r;
 }
 
-function fillRow(r, v) {
+function ordinal(n) {
+  const t = n % 100;
+  return n + (t >= 11 && t <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
+}
+
+function dayRanks() {
+  const days = new Map();
+  for (const v of S.videos.values()) {
+    if (!v.published) continue;
+    const k = ymdOf(v.published);
+    if (!days.has(k)) days.set(k, []);
+    days.get(k).push(v);
+  }
+  const out = new Map();
+  for (const list of days.values()) {
+    list.sort((a, b) => a.published - b.published || (a.id < b.id ? -1 : 1));
+    list.forEach((v, i) => out.set(v.id, [i + 1, list.length]));
+  }
+  return out;
+}
+
+function fillRow(r, v, rank) {
   if (v.thumb && r.img.getAttribute('src') !== v.thumb) r.img.src = v.thumb;
   r.a.href = (v.short ? 'https://www.youtube.com/shorts/' : 'https://www.youtube.com/watch?v=') + encodeURIComponent(v.id);
   r.a.textContent = v.title;
   r.a.title = v.title;
-  r.pub.textContent = dateOnly(v.published);
+  const when = v.published ? `${dateOnly(v.published)}, ${clock(v.published)}` : '';
+  const nth = !rank ? '' : rank[1] === 1 ? 'Only upload that day' : `${ordinal(rank[0])} of ${rank[1]} that day`;
+  if (r.pubSig !== when + '|' + nth) {
+    r.pubSig = when + '|' + nth;
+    r.pub.replaceChildren(when, nth ? h('span', { class: 'nth' }, nth) : '');
+  }
   r.views.textContent = fmt(v.views);
   const d = v.views - v.base;
   r.delta.textContent = signed(d);
@@ -1822,6 +1893,7 @@ function renderTable() {
   const list = [...S.videos.values()].sort((a, b) => b.views - a.views || b.published - a.published);
   const body = $('rows');
   const keep = new Set();
+  const ranks = dayRanks();
   for (const v of list) {
     keep.add(v.id);
     let r = S.rows.get(v.id);
@@ -1829,7 +1901,7 @@ function renderTable() {
       r = makeRow();
       S.rows.set(v.id, r);
     }
-    fillRow(r, v);
+    fillRow(r, v, ranks.get(v.id));
     body.appendChild(r.tr);
   }
   for (const [id, r] of S.rows) {
@@ -2168,20 +2240,89 @@ function clearStudioHours() {
   renderHourlyData();
 }
 
+function syncHVideo() {
+  const ch = S.channel;
+  if (!ch || S.hvideoFor === ch.id) return;
+  S.hvideoFor = ch.id;
+  const saved = store.get('ytlive.hvideo.' + ch.id, '');
+  S.hvideo = typeof saved === 'string' ? saved : '';
+}
+
+function curVideo() {
+  syncHVideo();
+  return S.hmetric === 'views' && S.hvideo ? S.videos.get(S.hvideo) || null : null;
+}
+
+function videoHourly(v) {
+  const H = { map: new Map() };
+  if (!v.published) return H;
+  const abs = p => [v.published + p[0] * 1000, p[1]];
+  const walk = pts => {
+    for (let i = 1; i < pts.length; i++) spreadHourly(H, pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]);
+  };
+  const R = remoteFor();
+  const rv = R && R.vhour.get(v.id);
+  const local = v.hist.map(abs);
+  if (rv) {
+    for (const b of rv.map.values()) H.map.set(b[0], [b[0], b[1], b[2], null]);
+    const head = local.filter(p => p[0] < rv.first[0]).concat([rv.first]);
+    walk(head);
+    walk([rv.last].concat(local.filter(p => p[0] > rv.last[0])));
+    H.start = hourFloor(head[0][0]);
+    return H;
+  }
+  const pts = effVH(v).map(abs);
+  if (pts.length && pts[0][0] > v.published && pts[0][0] - v.published <= BACKFILL_MAX) pts.unshift([v.published, 0]);
+  walk(pts);
+  if (pts.length) H.start = hourFloor(pts[0][0]);
+  return H;
+}
+
 function hourlySeries() {
-  const H = effHourly(S.hmetric);
+  const v = curVideo();
+  const H = v ? videoHourly(v) : effHourly(S.hmetric);
   if (!H || !H.map.size) return [];
   const keys = [...H.map.keys()].sort((a, b) => a - b);
+  const begin = H.start != null && H.start < keys[0] ? H.start : keys[0];
   const end = Math.max(keys[keys.length - 1], hourFloor(S.lastPoll || Date.now()));
   const out = [];
-  for (let t = keys[0]; t <= end; t += 3600e3) out.push(H.map.get(t) || [t, 0, 0, null]);
+  for (let t = begin; t <= end; t += 3600e3) out.push(H.map.get(t) || [t, 0, 0, null]);
   return out;
 }
 
-function hourlyGroups(pw) {
+function ymdOf(t) {
+  const d = new Date(t);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function dayStart(ymd, plus) {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(y, m - 1, d + (plus || 0)).getTime();
+}
+
+function hourlyRows() {
   const all = hourlySeries();
+  if (S.hrange === 'dates') {
+    const [f, t] = S.hdates;
+    const a = dayStart(f);
+    const rows = all.filter(r => r[0] >= a && r[0] < dayStart(t, 1));
+    let label = '';
+    if (rows.length) {
+      const late = rows[0][0] > a;
+      label = f === t
+        ? `on ${dateOnly(a)}${late ? `, since ${hourLabel(rows[0][0])}` : ''}`
+        : `from ${late ? `${dateOnly(rows[0][0])}, ${hourLabel(rows[0][0])}` : dateOnly(a)} to ${dateOnly(dayStart(t))}`;
+    }
+    return { all, rows, label };
+  }
   const span = HRANGES[S.hrange];
   const rows = span === Infinity ? all : all.slice(-span);
+  const label = span !== Infinity && all.length >= span ? HRANGE_TEXT[S.hrange] : rows.length ? `since ${dateOnly(rows[0][0])}, ${hourLabel(rows[0][0])}` : '';
+  return { all, rows, label };
+}
+
+function hourlyGroups(pw) {
+  const { all, rows, label } = hourlyRows();
   const k = MERGE.find(m => Math.ceil(rows.length / m) * 4 <= pw) || 24;
   const groups = [];
   for (const [t, m0, e0, sv] of rows) {
@@ -2200,7 +2341,7 @@ function hourlyGroups(pw) {
     g.hours += 1;
     if (studio) g.studio += 1;
   }
-  return { groups, k, rows, full: span !== Infinity && all.length >= span };
+  return { groups, k, all, label };
 }
 
 function groupText(g, k) {
@@ -2215,26 +2356,66 @@ function barPath(x, w, top, base, r) {
   return `M${x},${base}V${top + k}Q${x},${top} ${x + r},${top}H${x + w - r}Q${x + w},${top} ${x + w},${top + k}V${base}Z`;
 }
 
+function renderHControls(all) {
+  syncHVideo();
+  const list = [...S.videos.values()].filter(v => v.published).sort((a, b) => b.published - a.published || (a.id < b.id ? -1 : 1));
+  const sig = list.map(v => `${v.id}\u0001${v.title}`).join('\u0002');
+  const sel = $('hVideo');
+  if (sig !== S.hvsig) {
+    S.hvsig = sig;
+    sel.replaceChildren(h('option', { value: '' }, 'All uploads'), ...list.map(v => h('option', { value: v.id }, `${shorten(v.title, 44)} · ${dateOnly(v.published)}, ${clock(v.published)}`)));
+  }
+  sel.value = S.hvideo && S.videos.has(S.hvideo) ? S.hvideo : '';
+  $('hvWrap').hidden = S.hmetric !== 'views';
+  $('hdates').hidden = S.hrange !== 'dates';
+  for (const [id, val] of [['hFrom', S.hdates[0]], ['hTo', S.hdates[1]]]) {
+    const el = $(id);
+    if (document.activeElement === el) continue;
+    el.max = ymdOf(Date.now());
+    el.min = all && all.length ? ymdOf(all[0][0]) : '';
+    if (el.value !== val) el.value = val;
+  }
+}
+
 function renderHourly() {
   const meta = HMETRICS[S.hmetric];
   const views = S.hmetric === 'views';
-  const foot = remoteFor()
-    ? `Built from the public ${views ? 'view' : 'subscriber'} count, recorded about every 10 minutes by GitHub Actions${S.cfg ? ' and on every refresh while this page is open' : ''}${views ? ', so it can trail Studio during bursts' : ''}.`
-    : meta.foot;
-  $('hTitle').textContent = meta.title;
+  const v = curVideo();
+  const remote = !!remoteFor();
+  let foot = meta.foot;
+  if (v) {
+    foot = remote
+      ? `Built from this upload’s public view count, recorded about every 10 minutes by GitHub Actions${S.cfg ? ' and on every refresh while this page is open' : ''}, so it can trail Studio during bursts.`
+      : 'Built from this upload’s public view count while this page is open, so it can trail Studio during bursts.';
+  } else if (remote) {
+    foot = `Built from the public ${views ? 'view' : 'subscriber'} count, recorded about every 10 minutes by GitHub Actions${S.cfg ? ' and on every refresh while this page is open' : ''}${views ? ', so it can trail Studio during bursts' : ''}.`;
+  }
+  const title = v ? `${meta.title} · ${shorten(v.title, 60)}` : meta.title;
+  $('hTitle').textContent = title;
   $('hfoot').textContent = foot + (!views && S.channel && S.channel.subs >= 1000 ? ' Above 1,000 subscribers YouTube rounds the count, so gains show up in steps.' : '');
   const box = $('hchart');
   const svg = $('hsvg');
   const H0 = 220;
   const W = sizeSvg(box, svg, H0);
-  const { groups, k, rows, full } = hourlyGroups(W - 70);
+  const { groups, k, all, label } = hourlyGroups(W - 70);
+  renderHControls(all);
   if (!groups.length) {
     S.hgeom = null;
     hideHourHover();
     $('hlegend').hidden = true;
-    $('hsum').textContent = S.hmetric === 'subs' && S.channel && S.channel.subs == null ? 'This channel hides its subscriber count.' : 'Collecting data.';
-    s('text', { x: W / 2, y: H0 / 2, 'text-anchor': 'middle', class: 'empty' }, svg).textContent = 'Bars appear once a change is recorded.';
-    box.setAttribute('aria-label', `${meta.title} chart, collecting data`);
+    let msg = 'Collecting data.';
+    let hint = 'Bars appear once a change is recorded.';
+    if (S.hmetric === 'subs' && S.channel && S.channel.subs == null) {
+      msg = 'This channel hides its subscriber count.';
+    } else if (S.hrange === 'dates' && all.length) {
+      msg = 'No hourly data for these dates.';
+      hint = `Hours are recorded from ${dateOnly(all[0][0])}.`;
+    } else if (v) {
+      msg = 'No views recorded for this upload yet.';
+    }
+    $('hsum').textContent = msg;
+    s('text', { x: W / 2, y: H0 / 2, 'text-anchor': 'middle', class: 'empty' }, svg).textContent = hint;
+    box.setAttribute('aria-label', `${title} chart, ${msg.toLowerCase()}`);
     return;
   }
   const val = g => (meta.signed ? g.m + g.e : Math.max(0, g.m + g.e));
@@ -2288,12 +2469,11 @@ function renderHourly() {
     s('text', { x, y: H0 - 8, 'text-anchor': 'middle' }, svg).textContent = hour === 0 ? dateOnly(g.start) : hourLabel(g.start);
   });
   const sum = groups.reduce((a, g) => a + g.m + g.e, 0);
-  const span = full ? HRANGE_TEXT[S.hrange] : `since ${dateOnly(rows[0][0])}, ${hourLabel(rows[0][0])}`;
   const each = k === 1 ? '1 hour' : k === 24 ? '1 day' : `${k} hours`;
-  $('hsum').replaceChildren(h('strong', null, meta.signed ? signed(Math.round(sum)) : fmt(Math.max(0, sum))), ` ${meta.noun} ${span} · each bar = ${each}`);
+  $('hsum').replaceChildren(h('strong', null, meta.signed ? signed(Math.round(sum)) : fmt(Math.max(0, sum))), ` ${meta.noun} ${label} · each bar = ${each}`);
   $('hlegend').hidden = !anyEst;
   S.hgeom = { W, H: H0, L, T, pitch, groups, k, col };
-  box.setAttribute('aria-label', `${meta.title}, ${span}, ${groups.length} bars of ${each} each, peak ${fmt(Math.max(...vals))}`);
+  box.setAttribute('aria-label', `${title}, ${label}, ${groups.length} bars of ${each} each, peak ${fmt(Math.max(...vals))}`);
   if (S.hhoverOn) showHourHover(S.hhoverIdx);
 }
 
@@ -2339,7 +2519,11 @@ function onHourPointer(e) {
 function renderHourlyData() {
   if (!$('hourDetails').open) return;
   const meta = HMETRICS[S.hmetric];
-  const rows = hourlySeries();
+  const { rows } = hourlyRows();
+  if (!rows.length) {
+    $('hourTable').replaceChildren(h('p', { class: 'dim small' }, 'No hours to show for this period.'));
+    return;
+  }
   const start = Math.max(0, rows.length - 500);
   const body = [];
   for (let j = rows.length - 1; j >= start; j--) {
@@ -2358,11 +2542,44 @@ function renderHourlyData() {
 }
 
 function setHRange(r) {
-  S.hrange = HRANGES[r] ? r : 'all';
+  S.hrange = HR_MODES.includes(r) ? r : 'all';
   store.set('ytlive.hrange', S.hrange);
   for (const b of $('hranges').querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.hrange === S.hrange));
   hideHourHover();
-  if (S.total != null) renderHourly();
+  renderHControls(null);
+  if (S.total != null) {
+    renderHourly();
+    renderHourlyData();
+  }
+}
+
+function setHVideo(id) {
+  S.hvideo = id && S.videos.has(id) ? id : '';
+  if (S.channel) store.set('ytlive.hvideo.' + S.channel.id, S.hvideo);
+  hideHourHover();
+  if (S.total != null) {
+    renderHourly();
+    renderHourlyData();
+  }
+}
+
+function setHDates(which) {
+  let f = $('hFrom').value;
+  let t = $('hTo').value;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(f) || !/^\d{4}-\d{2}-\d{2}$/.test(t)) return;
+  if (f > t) {
+    if (which === 'from') t = f;
+    else f = t;
+  }
+  S.hdates = [f, t];
+  store.set('ytlive.hdates', S.hdates);
+  $('hFrom').value = f;
+  $('hTo').value = t;
+  hideHourHover();
+  if (S.total != null) {
+    renderHourly();
+    renderHourlyData();
+  }
 }
 
 function setHMetric(m) {
@@ -2792,7 +3009,10 @@ function init() {
     b.addEventListener('click', () => setAge(b.dataset.age));
   }
   const savedHRange = store.get('ytlive.hrange', 'all');
-  S.hrange = HRANGES[savedHRange] ? savedHRange : 'all';
+  S.hrange = HR_MODES.includes(savedHRange) ? savedHRange : 'all';
+  const savedDates = store.get('ytlive.hdates', null);
+  const today = ymdOf(Date.now());
+  S.hdates = Array.isArray(savedDates) && savedDates.length === 2 && savedDates.every(x => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x)) && savedDates[0] <= savedDates[1] ? savedDates : [today, today];
   const savedHMetric = store.get('ytlive.hmetric', 'views');
   S.hmetric = HMETRICS[savedHMetric] ? savedHMetric : 'views';
   for (const b of $('hranges').querySelectorAll('button')) {
@@ -2803,6 +3023,10 @@ function init() {
     b.setAttribute('aria-pressed', String(b.dataset.hmetric === S.hmetric));
     b.addEventListener('click', () => setHMetric(b.dataset.hmetric));
   }
+  $('hVideo').addEventListener('change', e => setHVideo(e.target.value));
+  $('hFrom').addEventListener('change', () => setHDates('from'));
+  $('hTo').addEventListener('change', () => setHDates('to'));
+  renderHControls(null);
 
   $('form').addEventListener('submit', onSubmit);
   $('exportBtn').addEventListener('click', exportSeed);

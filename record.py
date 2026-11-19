@@ -21,6 +21,7 @@ MIN_GAP = 300
 VH_MAX = 1_500
 VH_RETIRED = 80
 VH_VIDEOS = 300
+BACKFILL_MAX = 86_400_000
 
 
 def env(name, default=''):
@@ -134,6 +135,33 @@ def record_video(pts, age, views):
     return pts
 
 
+def prepend(H, pts):
+    first = H['first']
+    pts = sorted(p for p in pts if first is None or p[0] < first[0])
+    if not pts:
+        return
+    if first is not None:
+        pts.append(first)
+    for a, b in zip(pts, pts[1:]):
+        spread(H['b'], a[0], a[1], b[0], b[1])
+    H['first'] = list(pts[0])
+    if H['last'] is None:
+        H['last'] = list(pts[-1])
+
+
+def track_hours(H, pts, views, pub):
+    if H['first'] is None and pub and pub < min([p[0] for p in pts] + [NOW]) <= pub + BACKFILL_MAX:
+        pts = [[pub, 0]] + pts
+    prepend(H, pts)
+    last = H['last']
+    if last is None or NOW > last[0]:
+        if last is not None:
+            spread(H['b'], last[0], last[1], NOW, views)
+        H['last'] = [NOW, views]
+    if H['first'] is None:
+        H['first'] = [NOW, views]
+
+
 def retire(pts):
     if len(pts) <= VH_RETIRED:
         return pts
@@ -186,9 +214,23 @@ def load_state(data):
         if isinstance(s, list) and len(s) >= 2 and num(s[0]) and num(s[1]):
             rest = (list(s[2:5]) + [None, None, None])[:3]
             samples.append([int(s[0]), s[1]] + [x if num(x) else None for x in rest])
+    vhour = {}
+    src_all = data.get('vhour')
+    for vid, src in (src_all if isinstance(src_all, dict) else {}).items():
+        if not isinstance(src, dict):
+            continue
+        first, last = reading(src.get('first')), reading(src.get('last'))
+        if not first or not last:
+            continue
+        b = {}
+        for x in src.get('b') or []:
+            if isinstance(x, list) and len(x) >= 3 and all(num(y) for y in x[:3]):
+                b[int(x[0])] = [int(x[0]), float(x[1]), float(x[2])]
+        vhour[vid] = {'first': first, 'last': last, 'b': b}
     return {
         'samples': samples,
         'hourly': hourly,
+        'vhour': vhour,
         'vh': {k: v for k, v in (data.get('vh') or {}).items() if isinstance(v, list)},
         'seeds': [x for x in data.get('seeds') or [] if isinstance(x, str)],
         'seed_studio': {int(x[0]): x[1] for x in data.get('seedStudio') or [] if isinstance(x, list) and len(x) == 2 and num(x[0]) and num(x[1])},
@@ -355,6 +397,9 @@ def record_channel(query, store, seeds):
             age = max(0, round((NOW - pub) / 1000))
             if age <= LAUNCH_MAX:
                 state['vh'][it['id']] = record_video(state['vh'].get(it['id'], []), age, views)
+        H = state['vhour'].setdefault(it['id'], {'first': None, 'last': None, 'b': {}})
+        pts = state['vh'].get(it['id']) if pub else None
+        track_hours(H, [[pub + int(p[0]) * 1000, p[1]] for p in pts or [] if isinstance(p, list) and len(p) >= 2 and num(p[0]) and num(p[1])], views, pub)
     subs = None if st.get('hiddenSubscriberCount') else (int(st['subscriberCount']) if 'subscriberCount' in st else None)
 
     for key, value in (('views', total), ('subs', subs)):
@@ -380,8 +425,15 @@ def record_channel(query, store, seeds):
         age = (NOW - published[vid]) / 1000 if published.get(vid) else LAUNCH_MAX + 1
         vh[vid] = retire(pts) if age > LAUNCH_MAX else pts
 
+    vhour = {}
+    for vid in sorted(published, key=lambda v: published[v], reverse=True)[:VH_VIDEOS]:
+        H = state['vhour'].get(vid)
+        if H and H['last']:
+            b = [[hs, round(x[1], 2), round(x[2], 2)] for hs, x in sorted(H['b'].items())]
+            vhour[vid] = {'first': H['first'], 'last': H['last'], 'b': [x for x in b if x[1] or x[2]]}
+
     handle = sn.get('customUrl') or ''
-    names = {norm(x) for x in (c['id'], sn.get('title'), handle, channel_query(query).get('forHandle'))} - {''}
+    names ={norm(x) for x in (c['id'], sn.get('title'), handle, channel_query(query).get('forHandle'))} - {''}
     studio = dict(state['seed_studio'])
     studio.update(studio_hours(names))
     round2 = lambda x: round(x, 2)
@@ -402,6 +454,7 @@ def record_channel(query, store, seeds):
         'seedStudio': sorted([hs, v] for hs, v in state['seed_studio'].items()),
         'seeds': state['seeds'],
         'vh': vh,
+        'vhour': vhour,
     })
     print(f'{title}: {total:,} views, {subs if subs is not None else "hidden"} subscribers, {len(rows)} uploads.')
     return {'id': c['id'], 'title': title, 'avatar': avatar, 'handle': handle, 'q': query, 'updated': NOW}
