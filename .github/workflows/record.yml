@@ -1,0 +1,71 @@
+name: Record YouTube stats
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  actions: write
+
+concurrency:
+  group: record
+  cancel-in-progress: false
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Record
+        env:
+          YT_API_KEY: ${{ secrets.YT_API_KEY }}
+          CHANNELS: ${{ vars.CHANNELS }}
+          TZ_NAME: ${{ vars.TZ_NAME }}
+        run: |
+          mkdir -p store site
+          found=0
+          git ls-remote --exit-code --heads origin data > /dev/null || found=$?
+          if [ "$found" -eq 0 ]; then
+            git fetch --quiet --depth 1 origin data
+            git archive FETCH_HEAD | tar -x -C store
+          elif [ "$found" -ne 2 ]; then
+            echo "::error::Couldn't read the data branch, so nothing was changed."
+            exit 1
+          fi
+          python3 record.py store
+          cp -R store/. site/
+          cp index.html site/
+
+      - name: Save history
+        run: |
+          export GIT_INDEX_FILE="$(mktemp -u)"
+          git --work-tree=store add --all
+          tree=$(git write-tree)
+          commit=$(git -c user.name="stats-recorder" -c user.email="stats-recorder@users.noreply.github.com" commit-tree "$tree" -m "Record $(date -u +%Y-%m-%dT%H:%MZ)")
+          git push --quiet --force origin "$commit:refs/heads/data"
+
+      - name: Keep the schedule on
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] || [ "$(date -u +%H)" = "12" ]; then
+            gh api --silent -X PUT "repos/$GITHUB_REPOSITORY/actions/workflows/record.yml/enable" || echo "::warning::Couldn't refresh the schedule. If GitHub pauses it after 60 days, re-enable it in the Actions tab."
+          fi
+
+      - uses: actions/configure-pages@v6
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+      - id: deploy
+        uses: actions/deploy-pages@v5
