@@ -599,7 +599,6 @@ const TABLE_COLS = {
 const API_KEYS = { views: 'views', engagedViews: 'engaged', averageViewDuration: 'avd', averageViewPercentage: 'apv', likes: 'likes', comments: 'comments', shares: 'shares' };
 const ADV_COLS = [
   { key: 'views', label: 'Views', fmt: n => fmt(n) },
-  { key: 'viewed', label: 'Stayed to watch', fmt: n => pctText(n) },
   { key: 'avd', label: 'Avg view duration', fmt: n => durText(n) },
   { key: 'apv', label: 'Avg % viewed', fmt: n => pctText(n) },
   { key: 'hours', label: 'Watch time', fmt: n => hoursText(n) },
@@ -3863,7 +3862,7 @@ function advData() {
 }
 
 function advTiles(rows, total) {
-  const t = { feed: 0, feedN: 0, viewedW: 0, viewedD: 0, engaged: 0, engN: 0, hours: 0, hoursN: 0, avdW: 0, avdD: 0, apvW: 0, apvD: 0, subs: 0, subsN: 0 };
+  const t = { feed: 0, feedN: 0, engaged: 0, engN: 0, hours: 0, hoursN: 0, avdW: 0, avdD: 0, apvW: 0, apvD: 0, subs: 0, subsN: 0 };
   for (const [id, r] of rows) {
     const v = S.videos.get(id);
     if (!v) continue;
@@ -3872,10 +3871,6 @@ function advTiles(rows, total) {
     if (x.feed != null) {
       t.feed += x.feed;
       t.feedN += 1;
-    }
-    if (x.viewed != null && views > 0) {
-      t.viewedW += x.viewed * views;
-      t.viewedD += views;
     }
     if (x.engaged != null) {
       t.engaged += x.engaged;
@@ -3900,7 +3895,6 @@ function advTiles(rows, total) {
   }
   const T = total || {};
   const pick = (k, own) => (T[k] != null ? T[k] : own);
-  const viewed = pick('viewed', t.viewedD ? t.viewedW / t.viewedD : null);
   const avd = pick('avd', t.avdD ? t.avdW / t.avdD : null);
   const apv = pick('apv', t.apvD ? t.apvW / t.apvD : null);
   const hours = pick('hours', t.hoursN ? t.hours : null);
@@ -3910,7 +3904,6 @@ function advTiles(rows, total) {
   const subs = pick('subs', t.subsN ? t.subs : null);
   const from = total ? 'Studio’s channel total' : 'weighted by views';
   const cands = [
-    viewed != null && ['Stayed to watch', pctText(viewed), `${pctText(100 - viewed)} swiped away`],
     avd != null && ['Avg view duration', durText(avd), from],
     apv != null && ['Avg % viewed', pctText(apv), apv > 100 ? 'over 100% means rewatches' : from],
     hours != null && ['Watch time', hoursText(hours), total ? 'all Shorts' : `across ${fmt(t.hoursN)} upload${t.hoursN === 1 ? '' : 's'}`],
@@ -3950,7 +3943,7 @@ function renderAdvanced() {
   $('advWrap').hidden = !has;
   $('advEmpty').hidden = has;
   if (!has) {
-    $('advEmpty').textContent = 'Nothing here yet. In YouTube Studio open Insights → Advanced mode, choose Lifetime, filter Content type to Shorts, add Stayed to watch, Average view duration, Average percentage viewed and Engaged views, then export as .csv. Upload the .zip to the studio folder in your repo, or import Table data.csv under Import from YouTube Studio above. The recorder can also read the YouTube Analytics API on its own.';
+    $('advEmpty').textContent = 'Nothing here yet. In YouTube Studio open Insights → Advanced mode, choose Lifetime, filter Content type to Shorts, add Average view duration, Average percentage viewed and Engaged views, then export as .csv. Upload the .zip to the studio folder in your repo, or import Table data.csv under Import from YouTube Studio above. The recorder can also read the YouTube Analytics API on its own.';
   } else {
     $('advTiles').replaceChildren(...advTiles(list, total));
     const cols = ADV_COLS.filter(c => list.some(([, r]) => r.vals[c.key] != null));
