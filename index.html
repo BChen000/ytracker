@@ -593,16 +593,18 @@ const TABLE_COLS = {
   showninfeed: 'feed', viewedvsswipedaway: 'viewed', viewedvsswiped: 'viewed', stayedtowatch: 'viewed', views: 'views',
   engagedviews: 'engaged', averageviewduration: 'avd', averagepercentageviewed: 'apv', watchtimehours: 'hours',
   subscribers: 'subs', subscribersgained: 'subsGained', likes: 'likes', shares: 'shares', commentsadded: 'comments',
-  comments: 'comments', impressions: 'impr', impressionsclickthroughrate: 'ctr', uniqueviewers: 'uniq'
+  comments: 'comments', impressions: 'impr', thumbnailimpressions: 'impr', impressionsclickthroughrate: 'ctr',
+  thumbnailclickthroughrate: 'ctr', uniqueviewers: 'uniq'
 };
 const API_KEYS = { views: 'views', engagedViews: 'engaged', averageViewDuration: 'avd', averageViewPercentage: 'apv', likes: 'likes', comments: 'comments', shares: 'shares' };
 const ADV_COLS = [
-  { key: 'feed', label: 'Shown in feed', fmt: n => fmt(n) },
-  { key: 'viewed', label: 'Viewed vs swiped', fmt: n => pctText(n) },
-  { key: 'engaged', label: 'Engaged views', fmt: n => fmt(n) },
+  { key: 'views', label: 'Views', fmt: n => fmt(n) },
+  { key: 'viewed', label: 'Stayed to watch', fmt: n => pctText(n) },
   { key: 'avd', label: 'Avg view duration', fmt: n => durText(n) },
   { key: 'apv', label: 'Avg % viewed', fmt: n => pctText(n) },
   { key: 'hours', label: 'Watch time', fmt: n => hoursText(n) },
+  { key: 'engaged', label: 'Engaged views', fmt: n => fmt(n) },
+  { key: 'feed', label: 'Shown in feed', fmt: n => fmt(n) },
   { key: 'shares', label: 'Shares', fmt: n => fmt(n) },
   { key: 'subs', label: 'Subs', fmt: n => signed(n) }
 ];
@@ -1511,6 +1513,7 @@ function prepRemote(d) {
     const good = (Array.isArray(snaps) ? snaps : []).filter(s => Array.isArray(s) && s.length === 2 && num(s[0]) && s[1] && typeof s[1] === 'object').map(s => [s[0], cleanVals(s[1])]);
     if (good.length) vstats.set(id, good.sort((a, b) => a[0] - b[0]));
   }
+  const vtotal = (Array.isArray(d.vtotal) ? d.vtotal : []).filter(s => Array.isArray(s) && s.length === 2 && num(s[0]) && s[1] && typeof s[1] === 'object').map(s => [s[0], cleanVals(s[1])]).sort((a, b) => a[0] - b[0]);
   let analytics = null;
   const A = d.analytics;
   if (A && typeof A === 'object' && Array.isArray(A.cols)) {
@@ -1533,6 +1536,7 @@ function prepRemote(d) {
     studio,
     studioMin,
     vstats,
+    vtotal,
     analytics,
     vh,
     vhour
@@ -2595,7 +2599,7 @@ function cellNum(x) {
 }
 
 function tableHead(text) {
-  const first = text.replace(/^﻿/, '').split(/\r?\n/).find(l => l.trim()) || '';
+  const first = text.replace(/^\uFEFF/, '').split(/\r?\n/).find(l => l.trim()) || '';
   return (parseCsv(first)[0] || []).map(normKey);
 }
 
@@ -2604,21 +2608,24 @@ function isStatsTable(head) {
 }
 
 function parseStatsTable(text) {
-  const rows = parseCsv(text.replace(/^﻿/, ''));
+  const rows = parseCsv(text.replace(/^\uFEFF/, ''));
   const head = (rows[0] || []).map(normKey);
   const idcol = head.findIndex(k => k === 'content' || k === 'videoid' || k === 'video');
-  const out = {};
+  const out = { videos: {}, total: null };
   if (idcol < 0) return out;
   const cols = head.map((k, i) => [i, tableKey(k)]).filter(x => x[1]);
   for (const r of rows.slice(1)) {
     const id = String(r[idcol] || '').trim();
-    if (!/^[\w-]{11}$/.test(id)) continue;
+    const isTotal = id.toLowerCase() === 'total';
+    if (!isTotal && !/^[\w-]{11}$/.test(id)) continue;
     const vals = {};
     for (const [i, k] of cols) {
       const x = cellNum(r[i]);
       if (x != null) vals[k] = x;
     }
-    if (Object.keys(vals).length) out[id] = vals;
+    if (!Object.keys(vals).length) continue;
+    if (isTotal) out.total = vals;
+    else out.videos[id] = vals;
   }
   return out;
 }
@@ -2649,7 +2656,7 @@ function importMinutes(text) {
 }
 
 function importStats(text) {
-  const vals = parseStatsTable(text);
+  const { videos: vals, total } = parseStatsTable(text);
   const ids = Object.keys(vals);
   const status = $('importStatus');
   if (!ids.length) {
@@ -2657,9 +2664,9 @@ function importStats(text) {
     return;
   }
   const asOf = Date.now();
-  for (const id of ids) {
+  for (const [id, x] of Object.entries(total ? { ...vals, _total: total } : vals)) {
     const list = S.vstatsLocal[id] || (S.vstatsLocal[id] = []);
-    list.push([asOf, vals[id]]);
+    list.push([asOf, x]);
     if (list.length > 20) list.splice(0, list.length - 20);
   }
   store.set('ytlive.vstats.' + S.channel.id, S.vstatsLocal);
@@ -2692,7 +2699,7 @@ function clearStudioHours() {
   }
   saveHourly('views');
   const mins = S.smin.size;
-  const vids = Object.keys(S.vstatsLocal).length;
+  const vids = Object.keys(S.vstatsLocal).filter(k => k !== '_total').length;
   S.smin = new Map();
   S.vstatsLocal = {};
   store.del('ytlive.smin.' + S.channel.id);
@@ -3834,21 +3841,29 @@ function advData() {
     }
   };
   let studioAt = 0;
+  let total = null;
+  const addTotal = sn => {
+    if (sn && (!total || sn[0] >= total[0])) total = sn;
+  };
   const addSnaps = (id, snaps) => {
     const sn = snaps[snaps.length - 1];
+    if (id === '_total') return addTotal(sn);
     put(id, sn[1], sn[0], 'studio');
     studioAt = Math.max(studioAt, sn[0]);
   };
-  if (R) for (const [id, snaps] of R.vstats) addSnaps(id, snaps);
+  if (R) {
+    for (const [id, snaps] of R.vstats) addSnaps(id, snaps);
+    addTotal(R.vtotal[R.vtotal.length - 1]);
+  }
   for (const [id, snaps] of Object.entries(S.vstatsLocal)) addSnaps(id, snaps);
   const A = R && R.analytics;
   if (A) for (const [id, vals] of A.videos) put(id, vals, A.throughT, 'api');
   for (const row of rows.values()) if (row.vals.subs == null && row.vals.subsGained != null) row.vals.subs = row.vals.subsGained;
-  return { rows, studioAt, A };
+  return { rows, studioAt, A, total: total && total[0] >= studioAt - 60e3 ? total[1] : null };
 }
 
-function advTiles(rows) {
-  const t = { feed: 0, feedN: 0, viewedW: 0, viewedD: 0, engaged: 0, engViews: 0, engN: 0, hours: 0, hoursN: 0, avdW: 0, avdD: 0, apvW: 0, apvD: 0 };
+function advTiles(rows, total) {
+  const t = { feed: 0, feedN: 0, viewedW: 0, viewedD: 0, engaged: 0, engN: 0, hours: 0, hoursN: 0, avdW: 0, avdD: 0, apvW: 0, apvD: 0, subs: 0, subsN: 0 };
   for (const [id, r] of rows) {
     const v = S.videos.get(id);
     if (!v) continue;
@@ -3857,14 +3872,13 @@ function advTiles(rows) {
     if (x.feed != null) {
       t.feed += x.feed;
       t.feedN += 1;
-      if (x.viewed != null) {
-        t.viewedW += x.viewed * x.feed;
-        t.viewedD += x.feed;
-      }
+    }
+    if (x.viewed != null && views > 0) {
+      t.viewedW += x.viewed * views;
+      t.viewedD += views;
     }
     if (x.engaged != null) {
       t.engaged += x.engaged;
-      t.engViews += views;
       t.engN += 1;
     }
     if (x.hours != null) {
@@ -3879,18 +3893,33 @@ function advTiles(rows) {
       t.apvW += x.apv * views;
       t.apvD += views;
     }
+    if (x.subs != null) {
+      t.subs += x.subs;
+      t.subsN += 1;
+    }
   }
-  const tile = (label, value, sub) => h('div', { class: 'tile' }, h('p', { class: 't-label' }, label), h('p', { class: 't-value' }, value), h('p', { class: 't-sub' }, sub));
-  const apv = t.apvD ? t.apvW / t.apvD : null;
-  const viewed = t.viewedD ? t.viewedW / t.viewedD : null;
-  return [
-    tile('Shown in feed', t.feedN ? fmt(t.feed) : '–', t.feedN ? `across ${fmt(t.feedN)} upload${t.feedN === 1 ? '' : 's'}` : 'from a Studio export'),
-    tile('Viewed vs swiped away', viewed == null ? '–' : pctText(viewed), viewed == null ? 'from a Studio export' : `${pctText(100 - viewed)} swiped away`),
-    tile('Avg view duration', t.avdD ? durText(t.avdW / t.avdD) : '–', 'weighted by views'),
-    tile('Avg % viewed', apv == null ? '–' : pctText(apv), apv != null && apv > 100 ? 'over 100% means rewatches' : 'weighted by views'),
-    tile('Engaged views', t.engN ? fmt(t.engaged) : '–', t.engN && t.engViews ? `${pctText((t.engaged / t.engViews) * 100)} of views` : 'views past the first seconds'),
-    tile('Watch time', t.hoursN ? hoursText(t.hours) : '–', t.hoursN ? `across ${fmt(t.hoursN)} upload${t.hoursN === 1 ? '' : 's'}` : '')
-  ];
+  const T = total || {};
+  const pick = (k, own) => (T[k] != null ? T[k] : own);
+  const viewed = pick('viewed', t.viewedD ? t.viewedW / t.viewedD : null);
+  const avd = pick('avd', t.avdD ? t.avdW / t.avdD : null);
+  const apv = pick('apv', t.apvD ? t.apvW / t.apvD : null);
+  const hours = pick('hours', t.hoursN ? t.hours : null);
+  const engaged = pick('engaged', t.engN ? t.engaged : null);
+  const feed = pick('feed', t.feedN ? t.feed : null);
+  const views = pick('views', null);
+  const subs = pick('subs', t.subsN ? t.subs : null);
+  const from = total ? 'Studio’s channel total' : 'weighted by views';
+  const cands = [
+    viewed != null && ['Stayed to watch', pctText(viewed), `${pctText(100 - viewed)} swiped away`],
+    avd != null && ['Avg view duration', durText(avd), from],
+    apv != null && ['Avg % viewed', pctText(apv), apv > 100 ? 'over 100% means rewatches' : from],
+    hours != null && ['Watch time', hoursText(hours), total ? 'all Shorts' : `across ${fmt(t.hoursN)} upload${t.hoursN === 1 ? '' : 's'}`],
+    engaged != null && ['Engaged views', fmt(engaged), views ? `${pctText((engaged / views) * 100)} of views` : 'views past the first seconds'],
+    feed != null && ['Shown in feed', fmt(feed), 'times in the Shorts feed'],
+    views != null && ['Views', fmt(views), 'counted by Studio'],
+    subs != null && ['Subscribers', signed(subs), 'gained from Shorts']
+  ].filter(Boolean).slice(0, 6);
+  return cands.map(([label, value, sub]) => h('div', { class: 'tile' }, h('p', { class: 't-label' }, label), h('p', { class: 't-value' }, value), h('p', { class: 't-sub' }, sub)));
 }
 
 function advWhen(r, k) {
@@ -3907,7 +3936,7 @@ function setAdvSort(key) {
 
 function renderAdvanced() {
   if (!S.channel || S.total == null) return;
-  const { rows, studioAt, A } = advData();
+  const { rows, studioAt, A, total } = advData();
   const list = [...rows].filter(([id]) => S.videos.has(id));
   const src = [];
   if (studioAt) src.push(`Studio export from ${stamp(studioAt).replace(/:\d\d(?=\s|$)/, '')}`);
@@ -3921,9 +3950,10 @@ function renderAdvanced() {
   $('advWrap').hidden = !has;
   $('advEmpty').hidden = has;
   if (!has) {
-    $('advEmpty').textContent = 'Nothing here yet. In YouTube Studio open Analytics → Advanced mode, choose Lifetime, add Shown in feed, Viewed (vs. swiped away), Average view duration, Average percentage viewed and Engaged views, then Export current view as .csv. Upload Table data.csv to the studio folder in your repo, or import it under Import from YouTube Studio above. The recorder can also read the YouTube Analytics API on its own.';
+    $('advEmpty').textContent = 'Nothing here yet. In YouTube Studio open Insights → Advanced mode, choose Lifetime, filter Content type to Shorts, add Stayed to watch, Average view duration, Average percentage viewed and Engaged views, then export as .csv. Upload the .zip to the studio folder in your repo, or import Table data.csv under Import from YouTube Studio above. The recorder can also read the YouTube Analytics API on its own.';
   } else {
-    $('advTiles').replaceChildren(...advTiles(list));
+    $('advTiles').replaceChildren(...advTiles(list, total));
+    const cols = ADV_COLS.filter(c => list.some(([, r]) => r.vals[c.key] != null));
     const sk = S.advSort.key;
     const dir = S.advSort.dir;
     const val = ([id, r]) => (sk === 'pub' ? (S.videos.get(id).published || 0) : r.vals[sk]);
@@ -3942,7 +3972,7 @@ function renderAdvanced() {
       b.addEventListener('click', () => setAdvSort(key));
       return h('th', attrs, b);
     };
-    $('advHead').replaceChildren(h('tr', null, th('pub', 'Video', ''), ADV_COLS.map(c => th(c.key, c.label))));
+    $('advHead').replaceChildren(h('tr', null, th('pub', 'Video', ''), cols.map(c => th(c.key, c.label))));
     const ranks = dayRanks();
     $('advRows').replaceChildren(...list.map(([id, r]) => {
       const v = S.videos.get(id);
@@ -3950,7 +3980,7 @@ function renderAdvanced() {
       const rank = ranks.get(id);
       const nth = !rank ? '' : rank[1] === 1 ? 'only upload that day' : `${ordinal(rank[0])} of ${rank[1]} that day`;
       const when = v.published ? `${dateOnly(v.published)}, ${clock(v.published)}` : '';
-      const cells = ADV_COLS.map(c => {
+      const cells = cols.map(c => {
         const x = r.vals[c.key];
         return h('td', x == null ? { class: 'num dim' } : { class: 'num', title: advWhen(r, c.key) }, x == null ? '–' : c.fmt(x));
       });

@@ -51,7 +51,9 @@ TABLE_COLS = {
     'commentsadded': 'comments',
     'comments': 'comments',
     'impressions': 'impr',
+    'thumbnailimpressions': 'impr',
     'impressionsclickthroughrate': 'ctr',
+    'thumbnailclickthroughrate': 'ctr',
     'uniqueviewers': 'uniq',
 }
 
@@ -323,6 +325,7 @@ def load_state(data):
         if good:
             vstats[vid] = good
     seen = data.get('vstatsSeen')
+    vtotal = [[int(s[0]), {k: v for k, v in s[1].items() if num(v)}] for s in data.get('vtotal') or [] if isinstance(s, list) and len(s) == 2 and num(s[0]) and isinstance(s[1], dict)]
     return {
         'samples': samples,
         'hourly': hourly,
@@ -331,6 +334,7 @@ def load_state(data):
         'seeds': [x for x in data.get('seeds') or [] if isinstance(x, str)],
         'seed_studio': {int(x[0]): x[1] for x in data.get('seedStudio') or [] if isinstance(x, list) and len(x) == 2 and num(x[0]) and num(x[1])},
         'vstats': vstats,
+        'vtotal': vtotal,
         'vstats_seen': {k: int(v) for k, v in seen.items() if num(v)} if isinstance(seen, dict) else {},
         'analytics': data.get('analytics') if isinstance(data.get('analytics'), dict) else None,
     }
@@ -369,25 +373,28 @@ def is_table(head):
 def parse_table(text):
     rows = list(csv.reader(io.StringIO(text)))
     if not rows:
-        return {}
+        return {}, None
     head = [norm(h) for h in rows[0]]
     idcol = next((i for i, h in enumerate(head) if h in ('content', 'videoid', 'video')), None)
     if idcol is None:
-        return {}
+        return {}, None
     cols = [(i, TABLE_COLS[h]) for i, h in enumerate(head) if h in TABLE_COLS]
-    out = {}
+    out, total = {}, None
     for r in rows[1:]:
         vid = r[idcol].strip() if idcol < len(r) else ''
-        if not re.fullmatch(r'[\w-]{11}', vid):
+        is_total = vid.lower() == 'total'
+        if not is_total and not re.fullmatch(r'[\w-]{11}', vid):
             continue
         vals = {}
         for i, k in cols:
             x = cell(r[i]) if i < len(r) else None
             if x is not None:
                 vals[k] = x
-        if vals:
+        if vals and is_total:
+            total = vals
+        elif vals:
             out[vid] = vals
-    return out
+    return out, total
 
 
 def read_studio_file(name, raw, found):
@@ -449,7 +456,12 @@ def merge_tables(state, tables):
         if mark not in seen:
             seen[mark] = NOW
         as_of = seen[mark]
-        for vid, vals in parse_table(text).items():
+        videos, total = parse_table(text)
+        if total and not any(s[0] == as_of for s in state['vtotal']):
+            state['vtotal'].append([as_of, dict(total)])
+            state['vtotal'].sort(key=lambda s: s[0])
+            del state['vtotal'][:-VSTATS_KEEP]
+        for vid, vals in videos.items():
             snaps = state['vstats'].setdefault(vid, [])
             for s in snaps:
                 if s[0] == as_of:
@@ -773,6 +785,7 @@ def record_channel(query, store, seeds):
         'vhour': vhour,
         'vstats': {vid: snaps for vid, snaps in state['vstats'].items() if vid in published},
         'vstatsSeen': state['vstats_seen'],
+        'vtotal': state['vtotal'],
     }
     if analytics:
         out['analytics'] = analytics
