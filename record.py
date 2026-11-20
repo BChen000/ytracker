@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
+import csv
 import glob
 import hashlib
+import io
 import json
 import math
 import os
@@ -10,7 +12,8 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime
+import zipfile
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 GAP_MAX = 30 * 60_000
@@ -23,6 +26,34 @@ VH_RETIRED = 80
 VH_VIDEOS = 300
 BACKFILL_MAX = 86_400_000
 STREAM_KEEP = 7 * 86_400_000
+TOP_RESET = 3 * 3_600_000
+MINUTE_KEEP = 35 * 86_400_000
+VSTATS_KEEP = 60
+SEEN_KEEP = 300
+ANALYTICS_EVERY = 3 * 3_600_000
+ANALYTICS_RETRY = 3_600_000
+METRICS = ['views', 'engagedViews', 'estimatedMinutesWatched', 'averageViewDuration', 'averageViewPercentage',
+           'likes', 'comments', 'shares', 'subscribersGained', 'subscribersLost']
+TABLE_COLS = {
+    'showninfeed': 'feed',
+    'viewedvsswipedaway': 'viewed',
+    'viewedvsswiped': 'viewed',
+    'stayedtowatch': 'viewed',
+    'views': 'views',
+    'engagedviews': 'engaged',
+    'averageviewduration': 'avd',
+    'averagepercentageviewed': 'apv',
+    'watchtimehours': 'hours',
+    'subscribers': 'subs',
+    'subscribersgained': 'subsGained',
+    'likes': 'likes',
+    'shares': 'shares',
+    'commentsadded': 'comments',
+    'comments': 'comments',
+    'impressions': 'impr',
+    'impressionsclickthroughrate': 'ctr',
+    'uniqueviewers': 'uniq',
+}
 
 
 def env(name, default=''):
@@ -30,8 +61,13 @@ def env(name, default=''):
 
 
 API = env('YT_API_BASE', 'https://www.googleapis.com/youtube/v3/')
+ANALYTICS_API = env('YT_ANALYTICS_BASE', 'https://youtubeanalytics.googleapis.com/v2/')
+TOKEN_URL = env('YT_TOKEN_URL', 'https://oauth2.googleapis.com/token')
 KEY = env('YT_API_KEY')
 CHANNELS = env('CHANNELS') or env('CHANNEL')
+OAUTH_ID = env('YT_OAUTH_CLIENT_ID')
+OAUTH_SECRET = env('YT_OAUTH_CLIENT_SECRET')
+OAUTH_REFRESH = [t for t in re.split(r'[\s,]+', env('YT_OAUTH_REFRESH_TOKEN')) if t]
 NOW = int(env('RECORDER_NOW_MS') or time.time() * 1000)
 STUDIO_DIR = env('STUDIO_DIR', 'studio')
 SEED_DIR = env('SEED_DIR', '.')
@@ -119,6 +155,44 @@ def share(b):
     return abs(b[1]) / ((abs(b[1]) + abs(b[2])) or 1)
 
 
+def take(tops, vid, raw):
+    cur = tops.get(vid)
+    if cur is None:
+        tops[vid] = [raw, NOW, None]
+        return None, None, True
+    if raw >= cur[0]:
+        inc, t0 = raw - cur[0], cur[1]
+        tops[vid] = [raw, NOW, None]
+        return inc, t0, True
+    if cur[2] is None:
+        cur[2] = NOW
+    elif NOW - cur[2] >= TOP_RESET:
+        tops[vid] = [raw, NOW, None]
+        return 0, NOW, True
+    return 0, None, False
+
+
+def load_tops(data, stream):
+    tops = {}
+    src = data.get('top')
+    if isinstance(src, dict):
+        for vid, x in src.items():
+            if isinstance(x, list) and len(x) >= 2 and num(x[0]) and num(x[1]):
+                tops[vid] = [int(x[0]), int(x[1]), int(x[2]) if len(x) > 2 and num(x[2]) else None]
+        return tops
+    for vid, pts in stream.items():
+        for p in pts if isinstance(pts, list) else []:
+            if isinstance(p, list) and len(p) == 2 and num(p[0]) and num(p[1]) and (vid not in tops or p[1] >= tops[vid][0]):
+                tops[vid] = [int(p[1]), int(p[0]), None]
+    latest = data.get('latest') or {}
+    t = latest.get('t') if num(latest.get('t')) else NOW
+    for r in latest.get('videos') or []:
+        if isinstance(r, list) and len(r) > 5 and isinstance(r[0], str) and num(r[5]):
+            if r[0] not in tops or r[5] > tops[r[0]][0]:
+                tops[r[0]] = [int(r[5]), int(t), None]
+    return tops
+
+
 def record_video(pts, age, views):
     if not pts and age <= ANCHOR_MAX:
         pts.append([0, 0])
@@ -165,7 +239,7 @@ def track_hours(H, pts, views, pub):
 
 def track_stream(pts, views):
     pts = [p for p in pts if isinstance(p, list) and len(p) == 2 and num(p[0]) and num(p[1])] if isinstance(pts, list) else []
-    if not pts or NOW > pts[-1][0]:
+    if views is not None and (not pts or NOW > pts[-1][0]):
         if len(pts) >= 2 and pts[-1][1] == views and pts[-2][1] == views:
             pts[-1] = [NOW, views]
         else:
@@ -242,6 +316,13 @@ def load_state(data):
             if isinstance(x, list) and len(x) >= 3 and all(num(y) for y in x[:3]):
                 b[int(x[0])] = [int(x[0]), float(x[1]), float(x[2])]
         vhour[vid] = {'first': first, 'last': last, 'b': b}
+    vstats = {}
+    src_all = data.get('vstats')
+    for vid, snaps in (src_all if isinstance(src_all, dict) else {}).items():
+        good = [[int(s[0]), {k: v for k, v in s[1].items() if num(v)}] for s in snaps if isinstance(s, list) and len(s) == 2 and num(s[0]) and isinstance(s[1], dict)] if isinstance(snaps, list) else []
+        if good:
+            vstats[vid] = good
+    seen = data.get('vstatsSeen')
     return {
         'samples': samples,
         'hourly': hourly,
@@ -249,29 +330,138 @@ def load_state(data):
         'vh': {k: v for k, v in (data.get('vh') or {}).items() if isinstance(v, list)},
         'seeds': [x for x in data.get('seeds') or [] if isinstance(x, str)],
         'seed_studio': {int(x[0]): x[1] for x in data.get('seedStudio') or [] if isinstance(x, list) and len(x) == 2 and num(x[0]) and num(x[1])},
+        'vstats': vstats,
+        'vstats_seen': {k: int(v) for k, v in seen.items() if num(v)} if isinstance(seen, dict) else {},
+        'analytics': data.get('analytics') if isinstance(data.get('analytics'), dict) else None,
     }
 
 
-def studio_hours(names):
+def cell(x):
+    x = (x or '').strip().replace(',', '').replace('%', '').strip()
+    if not x:
+        return None
+    if ':' in x:
+        parts = [p.strip() for p in x.split(':')]
+        if not all(p.isdigit() for p in parts):
+            return None
+        total = 0
+        for p in parts:
+            total = total * 60 + int(p)
+        return total
+    try:
+        v = float(x)
+    except ValueError:
+        return None
+    return v if math.isfinite(v) else None
+
+
+def table_head(first):
+    try:
+        return [norm(h) for h in next(csv.reader([first]))]
+    except (csv.Error, StopIteration):
+        return []
+
+
+def is_table(head):
+    return ('content' in head or 'videotitle' in head) and 'date' not in head and any(h in TABLE_COLS for h in head)
+
+
+def parse_table(text):
+    rows = list(csv.reader(io.StringIO(text)))
+    if not rows:
+        return {}
+    head = [norm(h) for h in rows[0]]
+    idcol = next((i for i, h in enumerate(head) if h in ('content', 'videoid', 'video')), None)
+    if idcol is None:
+        return {}
+    cols = [(i, TABLE_COLS[h]) for i, h in enumerate(head) if h in TABLE_COLS]
     out = {}
-    current = hour_floor(NOW)
+    for r in rows[1:]:
+        vid = r[idcol].strip() if idcol < len(r) else ''
+        if not re.fullmatch(r'[\w-]{11}', vid):
+            continue
+        vals = {}
+        for i, k in cols:
+            x = cell(r[i]) if i < len(r) else None
+            if x is not None:
+                vals[k] = x
+        if vals:
+            out[vid] = vals
+    return out
+
+
+def read_studio_file(name, raw, found):
+    text = raw.decode('utf-8-sig', 'replace')
+    lines = text.splitlines()
+    first = next((x for x in lines if x.strip()), '')
+    head = table_head(first)
+    if is_table(head):
+        found['tables'].append((hashlib.sha256(raw).hexdigest()[:16], text))
+        return
+    minute = head[:1] == ['minute'] or (head[:1] != ['hour'] and 'minute' in name.lower())
+    cur_h = hour_floor(NOW)
+    cur_m = NOW - NOW % 60_000
+    for line in lines:
+        m = re.match(r'\s*(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2})(?::(\d{2}))?(?::\d{2})?\s*[,;\t]\s*([\d,]+)\s*$', line)
+        if not m:
+            continue
+        y, mo, d, h = (int(x) for x in m.groups()[:4])
+        mi = int(m.group(5) or 0) if minute else 0
+        try:
+            ts = int(datetime(y, mo, d, h, mi, tzinfo=TZ).timestamp() * 1000)
+        except ValueError:
+            continue
+        v = int(m.group(6).replace(',', ''))
+        if minute:
+            if ts < cur_m and NOW - ts <= MINUTE_KEEP:
+                found['minutes'][ts] = v
+        elif ts < cur_h:
+            found['hours'][ts] = v
+
+
+def studio_inputs(names):
+    found = {'hours': {}, 'minutes': {}, 'tables': []}
     if not os.path.isdir(STUDIO_DIR):
-        return out
+        return found
     for folder in sorted(os.listdir(STUDIO_DIR)):
         full = os.path.join(STUDIO_DIR, folder)
         if not os.path.isdir(full) or norm(folder) not in names:
             continue
-        for path in sorted(glob.glob(os.path.join(full, '**', '*.csv'), recursive=True)):
-            with open(path, encoding='utf-8-sig') as f:
-                for line in f:
-                    m = re.match(r'\s*(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2})(?::\d{2})?\s*[,;\t]\s*([\d,]+)\s*$', line)
-                    if not m:
-                        continue
-                    y, mo, d, h = (int(x) for x in m.groups()[:4])
-                    hs = int(datetime(y, mo, d, h, tzinfo=TZ).timestamp() * 1000)
-                    if hs < current:
-                        out[hs] = int(m.group(5).replace(',', ''))
-    return out
+        for path in sorted(glob.glob(os.path.join(full, '**', '*'), recursive=True)):
+            low = path.lower()
+            try:
+                if low.endswith('.csv'):
+                    with open(path, 'rb') as f:
+                        read_studio_file(os.path.basename(path), f.read(), found)
+                elif low.endswith('.zip'):
+                    with zipfile.ZipFile(path) as z:
+                        for n in z.namelist():
+                            if n.lower().endswith('.csv') and 'table' in n.lower():
+                                read_studio_file(n, z.read(n), found)
+            except (OSError, zipfile.BadZipFile, KeyError) as e:
+                print(f'Skipping {path}: {e}')
+    return found
+
+
+def merge_tables(state, tables):
+    seen = state['vstats_seen']
+    for mark, text in tables:
+        if mark not in seen:
+            seen[mark] = NOW
+        as_of = seen[mark]
+        for vid, vals in parse_table(text).items():
+            snaps = state['vstats'].setdefault(vid, [])
+            for s in snaps:
+                if s[0] == as_of:
+                    s[1].update(vals)
+                    break
+            else:
+                snaps.append([as_of, dict(vals)])
+                snaps.sort(key=lambda s: s[0])
+                del snaps[:-VSTATS_KEEP]
+    if len(seen) > SEEN_KEEP:
+        for k in sorted(seen, key=seen.get)[:-SEEN_KEEP]:
+            del seen[k]
 
 
 def load_seeds():
@@ -352,6 +542,82 @@ def merge_seed(state, mark, seed, path):
     print(f'Merged {path} into the history.')
 
 
+_TOKENS = None
+
+
+def access_tokens():
+    global _TOKENS
+    if _TOKENS is not None:
+        return _TOKENS
+    _TOKENS = []
+    for i, rt in enumerate(OAUTH_REFRESH, 1):
+        body = urllib.parse.urlencode({'client_id': OAUTH_ID, 'client_secret': OAUTH_SECRET, 'refresh_token': rt, 'grant_type': 'refresh_token'}).encode()
+        try:
+            with urllib.request.urlopen(urllib.request.Request(TOKEN_URL, data=body, method='POST'), timeout=30) as r:
+                tok = json.load(r).get('access_token')
+            if tok:
+                _TOKENS.append(tok)
+        except urllib.error.HTTPError as e:
+            print(f"::warning::Google refused YouTube Analytics refresh token {i} ({e.code}: {e.read().decode('utf-8', 'replace')[:200]}). Make a new one and update the YT_OAUTH_REFRESH_TOKEN secret.")
+        except (urllib.error.URLError, OSError, ValueError) as e:
+            print(f"::warning::Couldn't reach Google sign-in: {e}")
+    return _TOKENS
+
+
+def report(token, **params):
+    url = ANALYTICS_API + 'reports?' + urllib.parse.urlencode(params)
+    req = urllib.request.Request(url, headers={'Authorization': 'Bearer ' + token})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return json.load(r)
+    except urllib.error.HTTPError as e:
+        raise ApiError(e.code, e.read().decode('utf-8', 'replace')) from None
+
+
+def analytics_due(prev):
+    if not (OAUTH_ID and OAUTH_SECRET and OAUTH_REFRESH):
+        return False
+    if not prev:
+        return True
+    ok = prev.get('fetched') if num(prev.get('fetched')) else 0
+    bad = prev.get('errorAt') if num(prev.get('errorAt')) else 0
+    return NOW - max(ok, bad) >= (ANALYTICS_RETRY if bad > ok else ANALYTICS_EVERY)
+
+
+def fetch_analytics(cid, prev):
+    today = datetime.fromtimestamp(NOW / 1000, TZ).date()
+    end = today.isoformat()
+    err = 'no refresh token was accepted'
+    for tok in access_tokens():
+        metrics = list(METRICS)
+        try:
+            base = {'ids': 'channel==' + cid, 'endDate': end}
+            try:
+                vr = report(tok, startDate='2005-02-14', metrics=','.join(metrics), dimensions='video', sort='-views', maxResults=200, **base)
+            except ApiError as e:
+                if e.code != 400:
+                    raise
+                metrics.remove('engagedViews')
+                vr = report(tok, startDate='2005-02-14', metrics=','.join(metrics), dimensions='video', sort='-views', maxResults=200, **base)
+            dr = report(tok, startDate=(today - timedelta(days=89)).isoformat(), metrics=','.join(metrics), dimensions='day', sort='day', **base)
+        except ApiError as e:
+            err = str(e)
+            if e.code in (401, 403):
+                continue
+            break
+        except (urllib.error.URLError, OSError, ValueError) as e:
+            err = str(e)
+            break
+        clean = lambda xs: [x if num(x) else None for x in xs]
+        videos = {str(r[0]): clean(r[1:]) for r in vr.get('rows') or [] if r}
+        daily = [[str(r[0])] + clean(r[1:]) for r in dr.get('rows') or [] if r]
+        return {'fetched': NOW, 'through': daily[-1][0] if daily else None, 'cols': metrics, 'videos': videos, 'daily': daily}
+    print(f'::warning::YouTube Analytics for {cid}: {err[:300]}')
+    out = dict(prev or {})
+    out.update({'error': err[:300], 'errorAt': NOW})
+    return out
+
+
 def fetch_channel(query):
     r = api('channels', part='snippet,contentDetails,statistics', **channel_query(query))
     items = r.get('items') or []
@@ -388,7 +654,8 @@ def record_channel(query, store, seeds):
         videos += api('videos', part='snippet,statistics,contentDetails', id=','.join(ids[i:i + 50])).get('items', [])
 
     path = os.path.join(store, 'data', c['id'] + '.json')
-    state = load_state(load(path))
+    data = load(path)
+    state = load_state(data)
     stream_path = os.path.join(store, 'data', c['id'] + '.stream.json')
     try:
         stream = load(stream_path).get('videos')
@@ -396,45 +663,61 @@ def record_channel(query, store, seeds):
         stream = None
     if not isinstance(stream, dict):
         stream = {}
+    tops = load_tops(data, stream)
     for mark, seed, seed_path in seeds.get(c['id'], []):
         merge_seed(state, mark, seed, seed_path)
 
-    rows, total, likes, comments = [], 0, 0, 0
+    Hc = state['hourly']['views']
+    rows, total, likes, comments, gains = [], 0, 0, 0, []
     published = {}
     for it in videos:
         s, vs = it.get('statistics') or {}, it.get('snippet') or {}
-        views = int(s.get('viewCount', 0))
+        vid = it['id']
+        inc, t0, fresh = take(tops, vid, int(s.get('viewCount', 0)))
+        views = tops[vid][0]
         pub = iso_ms(vs['publishedAt']) if vs.get('publishedAt') else 0
         dur = seconds((it.get('contentDetails') or {}).get('duration'))
         th = vs.get('thumbnails') or {}
         thumb = (th.get('medium') or th.get('default') or th.get('high') or {}).get('url', '')
         like = int(s['likeCount']) if 'likeCount' in s else None
         comment = int(s['commentCount']) if 'commentCount' in s else None
-        rows.append([it['id'], vs.get('title') or it['id'], thumb, pub, int(dur is not None and dur <= 180), views, like, comment])
+        rows.append([vid, vs.get('title') or vid, thumb, pub, int(dur is not None and dur <= 180), views, like, comment, dur])
         total += views
         likes += like or 0
         comments += comment or 0
-        published[it['id']] = pub
+        published[vid] = pub
+        if inc is None and views and Hc['last'] is not None:
+            gains.append((pub if pub and NOW - pub <= BACKFILL_MAX else Hc['last'][0], views))
+        elif inc and t0 is not None:
+            gains.append((t0, inc))
+        if not fresh:
+            stream[vid] = track_stream(stream.get(vid), None)
+            continue
         if pub:
             age = max(0, round((NOW - pub) / 1000))
             if age <= LAUNCH_MAX:
-                state['vh'][it['id']] = record_video(state['vh'].get(it['id'], []), age, views)
-        H = state['vhour'].setdefault(it['id'], {'first': None, 'last': None, 'b': {}})
-        pts = state['vh'].get(it['id']) if pub else None
+                state['vh'][vid] = record_video(state['vh'].get(vid, []), age, views)
+        H = state['vhour'].setdefault(vid, {'first': None, 'last': None, 'b': {}})
+        pts = state['vh'].get(vid) if pub else None
         track_hours(H, [[pub + int(p[0]) * 1000, p[1]] for p in pts or [] if isinstance(p, list) and len(p) >= 2 and num(p[0]) and num(p[1])], views, pub)
-        stream[it['id']] = track_stream(stream.get(it['id']), views)
+        stream[vid] = track_stream(stream.get(vid), views)
     subs = None if st.get('hiddenSubscriberCount') else (int(st['subscriberCount']) if 'subscriberCount' in st else None)
 
-    for key, value in (('views', total), ('subs', subs)):
-        H = state['hourly'][key]
-        if value is None:
-            continue
-        if H['last'] and NOW > H['last'][0]:
-            spread(H['buckets'], H['last'][0], H['last'][1], NOW, value)
-        if not H['last'] or NOW > H['last'][0]:
-            H['last'] = [NOW, value]
-        if H['first'] is None:
-            H['first'] = [NOW, value]
+    if Hc['last'] is not None:
+        for t0, inc in gains:
+            spread(Hc['buckets'], min(t0, NOW), 0, NOW, inc)
+    if not Hc['last'] or NOW > Hc['last'][0]:
+        Hc['last'] = [NOW, total]
+    if Hc['first'] is None:
+        Hc['first'] = [NOW, total]
+    Hs = state['hourly']['subs']
+    if subs is not None:
+        if Hs['last'] and NOW > Hs['last'][0]:
+            spread(Hs['buckets'], Hs['last'][0], Hs['last'][1], NOW, subs)
+        if not Hs['last'] or NOW > Hs['last'][0]:
+            Hs['last'] = [NOW, subs]
+        if Hs['first'] is None:
+            Hs['first'] = [NOW, subs]
 
     samples = state['samples']
     if not samples or NOW > samples[-1][0]:
@@ -460,12 +743,17 @@ def record_channel(query, store, seeds):
 
     handle = sn.get('customUrl') or ''
     names = {norm(x) for x in (c['id'], sn.get('title'), handle, channel_query(query).get('forHandle'))} - {''}
+    found = studio_inputs(names)
     studio = dict(state['seed_studio'])
-    studio.update(studio_hours(names))
+    studio.update(found['hours'])
+    merge_tables(state, found['tables'])
+    analytics = state['analytics']
+    if analytics_due(analytics):
+        analytics = fetch_analytics(c['id'], analytics)
     round2 = lambda x: round(x, 2)
     title = sn.get('title') or c['id']
     avatar = ((sn.get('thumbnails') or {}).get('default') or {}).get('url', '')
-    write(path, {
+    out = {
         'v': 1,
         'tz': str(TZ),
         'updated': NOW,
@@ -477,11 +765,18 @@ def record_channel(query, store, seeds):
                        'buckets': [[b[0], round2(b[1]), round2(b[2])] for _, b in sorted(H['buckets'].items())]}
                    for k, H in state['hourly'].items()},
         'studio': sorted([hs, v] for hs, v in studio.items()),
+        'studioMin': sorted([t, v] for t, v in found['minutes'].items()),
         'seedStudio': sorted([hs, v] for hs, v in state['seed_studio'].items()),
         'seeds': state['seeds'],
+        'top': {vid: tops[vid] for vid in published if vid in tops},
         'vh': vh,
         'vhour': vhour,
-    })
+        'vstats': {vid: snaps for vid, snaps in state['vstats'].items() if vid in published},
+        'vstatsSeen': state['vstats_seen'],
+    }
+    if analytics:
+        out['analytics'] = analytics
+    write(path, out)
     print(f'{title}: {total:,} views, {subs if subs is not None else "hidden"} subscribers, {len(rows)} uploads.')
     return {'id': c['id'], 'title': title, 'avatar': avatar, 'handle': handle, 'q': query, 'updated': NOW}
 
