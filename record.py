@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import bisect
 import csv
 import glob
 import hashlib
@@ -32,6 +33,8 @@ VSTATS_KEEP = 60
 SEEN_KEEP = 300
 ANALYTICS_EVERY = 3 * 3_600_000
 ANALYTICS_RETRY = 3_600_000
+DAY_MS = 86_400_000
+TREND_STEP = 2 * 3_600_000
 METRICS = ['views', 'engagedViews', 'estimatedMinutesWatched', 'averageViewDuration', 'averageViewPercentage',
            'likes', 'comments', 'shares', 'subscribersGained', 'subscribersLost']
 TABLE_COLS = {
@@ -656,6 +659,39 @@ def fetch_uploads(playlist):
             return list(dict.fromkeys(ids))
 
 
+def value_at(pts, t, i):
+    out = None
+    for s in pts:
+        if s[0] > t:
+            break
+        if s[i] is not None:
+            out = s[i]
+    if out is None:
+        out = next((s[i] for s in pts if s[0] >= t and s[i] is not None), None)
+    return out
+
+
+def channel_summary(samples, published, current):
+    pubs = sorted(p for p in published.values() if p)
+    uploads_at = lambda t: bisect.bisect_right(pubs, t)
+    pts = [s for s in samples if num(s[0]) and num(s[1])]
+    out = dict(current)
+    if not pts:
+        return out
+    older = [s[0] for s in pts if s[0] <= NOW - DAY_MS]
+    since = older[-1] if older else pts[0][0]
+    out['base'] = [since] + [value_at(pts, since, i) for i in (1, 2, 3, 4)] + [uploads_at(since)]
+    prior = [s for s in pts if s[0] <= NOW - 2 * DAY_MS]
+    if prior:
+        out['prev'] = [prior[-1][0], prior[-1][1]]
+    slots = {}
+    for s in pts:
+        if s[0] >= NOW - KEEP_FULL:
+            slots[s[0] // TREND_STEP] = s
+    out['trend'] = [[s[0], s[1], s[2], s[3], s[4], uploads_at(s[0])] for _, s in sorted(slots.items())]
+    return out
+
+
 def record_channel(query, store, seeds):
     c = fetch_channel(query)
     sn, st = c.get('snippet') or {}, c.get('statistics') or {}
@@ -791,7 +827,8 @@ def record_channel(query, store, seeds):
         out['analytics'] = analytics
     write(path, out)
     print(f'{title}: {total:,} views, {subs if subs is not None else "hidden"} subscribers, {len(rows)} uploads.')
-    return {'id': c['id'], 'title': title, 'avatar': avatar, 'handle': handle, 'q': query, 'updated': NOW}
+    stats = channel_summary(samples, published, {'views': total, 'subs': subs, 'likes': likes, 'comments': comments, 'uploads': len(rows)})
+    return {'id': c['id'], 'title': title, 'avatar': avatar, 'handle': handle, 'q': query, 'updated': NOW, 'stats': stats}
 
 
 def main():
