@@ -19,25 +19,17 @@
   --axis: #c3c2b7;
   --border: rgba(11, 11, 11, 0.1);
   --series: #2a78d6;
-  --s1: #2a78d6;
-  --s2: #eb6834;
-  --s3: #1baf7a;
   --good: #006300;
-  --live: #0ca30c;
-  --critical: #d03b3b;
+  --bad: #d03b3b;
   --btn: #0b0b0b;
   --btn-text: #fcfcfb;
   --shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
-  --bad: #d03b3b;
   --c1: #2a78d6;
-  --c2: #eb6834;
-  --c3: #1baf7a;
-  --c4: #eda100;
-  --c5: #e87ba4;
-  --c6: #008300;
-  --c7: #6250d6;
-  --c8: #e34948;
-  --c4-ink: #0b0b0b;
+  --c2: #e87ba4;
+  --c3: #eda100;
+  --c4: #6250d6;
+  --c5: #eb6834;
+  --c3-ink: #0b0b0b;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -52,22 +44,17 @@
     --axis: #383835;
     --border: rgba(255, 255, 255, 0.1);
     --series: #3987e5;
-    --s1: #3987e5;
-    --s2: #d95926;
-    --s3: #199e70;
     --good: #0ca30c;
+    --bad: #e66767;
     --btn: #f0efec;
     --btn-text: #1a1a19;
     --shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
     --c1: #3987e5;
-    --c2: #d95926;
-    --c3: #199e70;
-    --c4: #c98500;
-    --c5: #d55181;
-    --c6: #0ca30c;
-    --c7: #9085e9;
-    --c8: #e66767;
-    --c4-ink: #ffffff;
+    --c2: #d55181;
+    --c3: #c98500;
+    --c4: #9085e9;
+    --c5: #d95926;
+    --c3-ink: #ffffff;
   }
 }
 
@@ -116,15 +103,15 @@ select { cursor: pointer; }
 .actions { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
 .help { font-size: 12.5px; color: var(--text-2); margin: 14px 0 0; }
 .help + .help { margin-top: 8px; }
-.form-msg { margin: 0 0 12px; padding-left: 10px; border-left: 3px solid var(--critical); font-size: 13px; }
+.form-msg { margin: 0 0 12px; padding-left: 10px; border-left: 3px solid var(--text-2); font-size: 13px; }
 .export { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
 .export .foot { margin: 0; }
 .slink { font-size: 13px; color: var(--text); text-underline-offset: 2px; }
 .chan-row { display: flex; align-items: center; gap: 10px; margin: -6px 0 20px; }
 .chan-row select { width: auto; max-width: 100%; min-width: 0; padding: 7px 10px; font-size: 13px; }
 
-.alert { display: flex; gap: 12px; align-items: flex-start; max-width: 760px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--critical); border-radius: 10px; padding: 12px 14px; margin-bottom: 18px; }
-.alert .icon { flex: none; width: 20px; height: 20px; margin-top: 1px; border-radius: 50%; background: var(--critical); color: #fff; font-size: 13px; font-weight: 700; display: grid; place-items: center; }
+.alert { display: flex; gap: 12px; align-items: flex-start; max-width: 760px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--text-2); border-radius: 10px; padding: 12px 14px; margin-bottom: 18px; }
+.alert .icon { flex: none; width: 20px; height: 20px; margin-top: 1px; border-radius: 50%; background: var(--text); color: var(--surface); font-size: 13px; font-weight: 700; display: grid; place-items: center; }
 .alert p { margin: 0; }
 .a-title { font-weight: 600; }
 .a-hint { color: var(--text-2); margin-top: 3px !important; }
@@ -140,10 +127,10 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1
 .bump-total.show { animation: rise 4s ease-out forwards; }
 .hero-label { margin: 8px 0 12px; color: var(--text-2); font-size: 14px; }
 .status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; color: var(--text-2); font-size: 13px; }
-.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--live); flex: none; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--series); flex: none; }
 .dot.live { animation: pulse 2s ease-in-out infinite; }
 .dot.paused { background: var(--muted); }
-.dot.err { background: var(--critical); }
+.dot.err { background: transparent; box-shadow: inset 0 0 0 2px var(--text-2); }
 
 .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
@@ -174,16 +161,6 @@ h2 .count { color: var(--text-2); font-weight: 400; }
 .ring { fill: var(--surface); }
 .mark { fill: var(--series); }
 .xhair { stroke: var(--text-2); stroke-width: 1; opacity: 0.45; }
-.ctx { fill: none; stroke: var(--muted); stroke-width: 1; opacity: 0.35; stroke-linejoin: round; stroke-linecap: round; }
-.med { fill: none; stroke: var(--muted); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.sel { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.sel.s1 { stroke: var(--s1); }
-.sel.s2 { stroke: var(--s2); }
-.sel.s3 { stroke: var(--s3); }
-.fill.s1 { fill: var(--s1); }
-.fill.s2 { fill: var(--s2); }
-.fill.s3 { fill: var(--s3); }
-.fill.medf { fill: var(--muted); }
 .tip { position: absolute; z-index: 2; pointer-events: none; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow); padding: 7px 10px; font-size: 12px; color: var(--text-2); white-space: nowrap; }
 .tip strong { display: block; font-size: 15px; color: var(--text); font-variant-numeric: tabular-nums; }
 .tip .thead { margin-bottom: 4px; }
@@ -196,12 +173,6 @@ h2 .count { color: var(--text-2); font-weight: 400; }
 .key { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 .kname { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lk { display: inline-block; flex: none; width: 16px; height: 2px; border-radius: 1px; }
-.lk.s1 { background: var(--s1); }
-.lk.s2 { background: var(--s2); }
-.lk.s3 { background: var(--s3); }
-.lk.med { background: var(--muted); }
-.lk.ctx { height: 1px; background: var(--muted); opacity: 0.6; }
-.launch-note { margin: 0 0 10px; font-size: 13px; }
 .foot { margin: 6px 0 0; font-size: 12px; color: var(--text-2); }
 .f-label.gapl { margin-left: 8px; }
 .hv { display: inline-flex; align-items: center; gap: 10px; min-width: 0; max-width: 100%; }
@@ -244,13 +215,32 @@ td.pub { white-space: nowrap; }
 .adv-tiles { margin: 4px 0 14px; }
 .adv-tiles .tile { background: var(--page); }
 .adv-tiles .t-value { font-size: 22px; }
-.adv-table th button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit; }
-.adv-table th button:hover { color: var(--text); }
-.adv-table th[aria-sort] button { color: var(--text); font-weight: 600; }
-.adv-table td.title { min-width: 180px; max-width: 300px; }
-.adv-table td.title a { -webkit-line-clamp: 1; }
-.adv-table .nth { color: var(--text-2); }
-.src-note { color: var(--muted); font-size: 11.5px; }
+.up-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; margin: 0 0 10px; }
+.up-head h2 { margin: 0; }
+.up-head input { width: min(280px, 100%); padding: 6px 10px; font-size: 13px; }
+.vtable th { vertical-align: bottom; }
+.vtable th.num { white-space: normal; min-width: 56px; }
+.vtable th button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit; }
+.vtable th button:hover { color: var(--text); }
+.vtable th[aria-sort] button { color: var(--text); font-weight: 600; }
+.vtable td.title { min-width: 170px; max-width: 250px; }
+tr.vrow { cursor: pointer; }
+tr.vrow:hover td { background: color-mix(in srgb, var(--raised) 55%, transparent); }
+tr.vrow:focus-visible { outline: 2px solid var(--series); outline-offset: -2px; }
+tr.vrow[aria-expanded="true"] td { background: var(--raised); border-bottom-color: transparent; }
+tr.med-row td { background: var(--page); }
+tr.vdetail td { background: var(--raised); padding: 2px 10px 14px; }
+.vd { position: sticky; left: 10px; max-width: calc(100vw - 72px); }
+.vd-age { margin: 2px 0 10px; font-size: 13px; }
+.vd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.vd-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+.vd-card p { margin: 0; }
+.vd-label { font-size: 12px; color: var(--text-2); }
+.vd-value { margin: 2px 0 4px !important; font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.vd-line { font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.vd-cmp { font-weight: 600; }
+.up-more { margin-top: 10px; }
+.mpub { display: none !important; }
 .pf { margin-top: 16px; }
 .pf-top { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 12px; margin: 0 0 12px; }
 .pf-total { font-size: 26px; font-weight: 600; }
@@ -300,13 +290,6 @@ th { padding: 6px 8px; border-bottom: 1px solid var(--grid); font-size: 12px; fo
 td { padding: 8px; border-bottom: 1px solid var(--grid); vertical-align: middle; }
 tbody tr:last-child td { border-bottom: 0; }
 .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.pick { width: 32px; padding: 0 0 0 2px; }
-.swatch { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
-.swatch::before { content: ""; box-sizing: border-box; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--muted); }
-.swatch:hover::before { border-color: var(--text-2); }
-.swatch.s1::before { background: var(--s1); border-color: var(--s1); }
-.swatch.s2::before { background: var(--s2); border-color: var(--s2); }
-.swatch.s3::before { background: var(--s3); border-color: var(--s3); }
 .thumb { width: 43px; padding-right: 0; }
 .thumb img { display: block; width: 27px; height: 48px; object-fit: cover; border-radius: 4px; background: var(--raised); }
 .title a { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-decoration: none; }
@@ -326,8 +309,10 @@ tr.bump td { animation: flash 1.6s ease-out; }
 @media (max-width: 640px) {
   .wrap { padding: 20px 14px 40px; }
   .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .pub, .com, .since { display: none; }
-  .adv-table td.title { min-width: 150px; }
+  .vtable td.title { min-width: 150px; }
+  .vtable .thumb, .vtable .pub { display: none; }
+  .mpub { display: block !important; color: var(--text-2); font-weight: 400; }
+  .vd-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pf-row { grid-template-columns: minmax(0, 1fr); gap: 4px; }
   .pf-x, .pf-hold .tick { display: none; }
   .pf-hold { min-width: 0; }
@@ -585,42 +570,10 @@ tr.bump td { animation: flash 1.6s ease-out; }
       </details>
     </section>
 
-    <div class="filters">
-      <span id="ageLabel" class="f-label">Since upload</span>
-      <div id="ages" class="seg" role="group" aria-labelledby="ageLabel">
-        <button type="button" data-age="1h">First hour</button>
-        <button type="button" data-age="6h">6h</button>
-        <button type="button" data-age="24h">24h</button>
-        <button type="button" data-age="7d">7 days</button>
-      </div>
-    </div>
-
-    <section class="card chart-card">
-      <h2>Launch curves</h2>
-      <p id="launchNote" class="launch-note" hidden></p>
-      <div id="legend" class="legend"></div>
-      <div id="lchart" class="chart" tabindex="0" role="group" aria-roledescription="chart" aria-describedby="lchartHint">
-        <svg id="lsvg" aria-hidden="true"></svg>
-        <div id="ltip" class="tip" role="status" aria-live="polite" hidden></div>
-        <span id="lchartHint" class="sr">Views by time since upload. Use the left and right arrow keys to move along it.</span>
-      </div>
-      <p id="lfoot" class="foot">Uploads are tracked from the moment this page first sees them, so keep it open when you post. Use the dots in the uploads list to highlight up to three.</p>
-      <details id="launchDetails" class="data">
-        <summary>Launch table</summary>
-        <div id="launchTable" class="scroll"></div>
-      </details>
-    </section>
-
     <section class="card adv" aria-labelledby="advTitle">
       <h2 id="advTitle">Advanced stats <span id="advCount" class="count"></span></h2>
       <p id="advSrc" class="hsum"></p>
       <div id="advTiles" class="tiles adv-tiles" hidden></div>
-      <div id="advWrap" class="scroll" hidden>
-        <table class="adv-table">
-          <thead id="advHead"></thead>
-          <tbody id="advRows"></tbody>
-        </table>
-      </div>
       <p id="advEmpty" class="foot" hidden></p>
       <details id="advDaily" class="data" hidden>
         <summary>Daily totals from YouTube Analytics</summary>
@@ -628,16 +581,20 @@ tr.bump td { animation: flash 1.6s ease-out; }
       </details>
     </section>
 
-    <section class="card uploads">
-      <h2>Uploads <span id="upCount" class="count"></span></h2>
+    <section class="card uploads" aria-labelledby="upTitle">
+      <div class="up-head">
+        <h2 id="upTitle">Uploads <span id="upCount" class="count"></span></h2>
+        <input id="upSearch" type="search" placeholder="Search uploads" aria-label="Search uploads by title" autocomplete="off" spellcheck="false">
+      </div>
       <div class="scroll">
-        <table>
-          <thead>
-            <tr><th class="pick"><span class="sr">Highlight</span></th><th colspan="2">Video</th><th class="pub">Published</th><th class="num">Views</th><th id="sinceHead" class="num since">Since open</th><th class="num">Likes</th><th class="num com">Comments</th></tr>
-          </thead>
+        <table class="vtable">
+          <thead id="vHead"></thead>
           <tbody id="rows"></tbody>
         </table>
       </div>
+      <p id="upEmpty" class="foot" hidden></p>
+      <div class="up-more"><button id="upMore" class="btn" type="button" hidden></button></div>
+      <p class="foot">Click a row to compare it with the channel median. Avg view duration and Avg % viewed come from YouTube Studio.</p>
     </section>
   </main>
 </div>
@@ -677,16 +634,18 @@ const TABLE_COLS = {
   thumbnailclickthroughrate: 'ctr', uniqueviewers: 'uniq'
 };
 const API_KEYS = { views: 'views', engagedViews: 'engaged', averageViewDuration: 'avd', averageViewPercentage: 'apv', likes: 'likes', comments: 'comments', shares: 'shares' };
-const ADV_COLS = [
-  { key: 'views', label: 'Views', fmt: n => fmt(n) },
-  { key: 'avd', label: 'Avg view duration', fmt: n => durText(n) },
-  { key: 'apv', label: 'Avg % viewed', fmt: n => pctText(n) },
-  { key: 'hours', label: 'Watch time', fmt: n => hoursText(n) },
-  { key: 'engaged', label: 'Engaged views', fmt: n => fmt(n) },
-  { key: 'feed', label: 'Shown in feed', fmt: n => fmt(n) },
-  { key: 'shares', label: 'Shares', fmt: n => fmt(n) },
-  { key: 'subs', label: 'Subs', fmt: n => signed(n) }
+const VCOLS = [
+  { key: 'views', label: 'Views', fmt: n => fmt(n), dfmt: d => signed(d) },
+  { key: 'day', label: '24 h', fmt: n => signed(n), dfmt: d => signed(d) },
+  { key: 'likes', label: 'Likes', fmt: n => fmt(n), dfmt: d => signed(d) },
+  { key: 'comments', label: 'Comments', fmt: n => fmt(n), dfmt: d => signed(d) },
+  { key: 'avd', label: 'Avg view duration', fmt: n => durText(n), dfmt: d => signedText(d, durText), studio: true },
+  { key: 'apv', label: 'Avg % viewed', fmt: n => pctText(n), dfmt: d => signedText(d, pctText), studio: true }
 ];
+const VTOP = 10;
+const LAUNCH_AGE = 8 * 86400;
+const PF_POLL = 300e3;
+const PF_LIST = 1800e3;
 const PF_METRICS = [
   { key: 'views', label: 'Views', noun: 'views' },
   { key: 'subs', label: 'Subscribers', noun: 'subscribers' },
@@ -700,19 +659,14 @@ const PF_KNOWN = {
   rabbitrhymes: ['RBBT', 'Animated rabbit shorts'],
   wildlore: ['WILD', 'Nature documentary']
 };
-const PF_SLOTS = 8;
+const PF_SLOTS = 5;
 const PF_FULL_DAY = 23.5 * 3600e3;
 const HIST_STEP = 300e3;
 const HIST_MAX = 5000;
 const VH_MAX = 1500;
 const ANCHOR_MAX = 1800;
-const SAMPLES = 120;
 const RANGES = { '1h': 3600e3, '6h': 21600e3, '24h': 86400e3, all: Infinity };
 const RANGE_TEXT = { '1h': 'last hour', '6h': 'last 6 hours', '24h': 'last 24 hours', all: 'all recorded history' };
-const AGES = { '1h': 3600, '6h': 21600, '24h': 86400, '7d': 604800 };
-const AGE_TICKS = { '1h': 600, '6h': 3600, '24h': 14400, '7d': 86400 };
-const AGE_TEXT = { '1h': 'first hour', '6h': 'first 6 hours', '24h': 'first 24 hours', '7d': 'first 7 days' };
-const MILESTONES = [600, 3600, 21600, 86400, 604800];
 const INTERVALS = [15, 30, 60, 120];
 const X_STEPS = [60e3, 120e3, 300e3, 600e3, 900e3, 1800e3, 3600e3, 7200e3, 10800e3, 21600e3, 43200e3, 86400e3, 172800e3, 604800e3];
 const LINK_LIB = 'https://console.cloud.google.com/apis/library/youtube.googleapis.com';
@@ -726,7 +680,6 @@ const fmt = n => nf.format(Math.round(n));
 const count = x => (x == null || x === '' ? null : Number(x));
 const signed = n => (n > 0 ? '+' : n < 0 ? '−' : '') + fmt(Math.abs(n));
 const pctText = n => `${(Math.round(n * 10) / 10).toLocaleString()}%`;
-const hoursText = n => (n < 1 ? `${fmt(n * 60)} min` : `${(Math.round(n * 10) / 10).toLocaleString()} h`);
 const small = n => (Math.abs(n) < 10 && Math.abs(n - Math.round(n)) > 0.05 ? (Math.round(n * 10) / 10).toLocaleString() : fmt(n));
 
 function durText(sec) {
@@ -754,13 +707,6 @@ function dateOnly(t) {
 function shorten(text, n) {
   const parts = graphemes ? [...graphemes.segment(text)].map(x => x.segment) : Array.from(text);
   return parts.length > n ? parts.slice(0, n - 1).join('').trimEnd() + '…' : text;
-}
-
-function ageTick(sec, days) {
-  if (sec === 0) return '0';
-  if (sec < 3600) return `${Math.round(sec / 60)}m`;
-  if (sec < (days ? 86400 : 172800)) return `${Math.round(sec / 3600)}h`;
-  return `${Math.round(sec / 86400)}d`;
 }
 
 function ageText(sec) {
@@ -817,12 +763,10 @@ const S = {
   gen: 0,
   cfg: null,
   range: 'all',
-  age: '24h',
   channel: null,
   videos: new Map(),
   rows: new Map(),
   known: new Set(),
-  sel: { auto: true, ids: [] },
   hist: [],
   total: null,
   likes: null,
@@ -852,10 +796,6 @@ const S = {
   hoverT: 0,
   hoverIdx: -1,
   hoverLast: false,
-  lgeom: null,
-  lhv: null,
-  lhoverOn: false,
-  lhoverIdx: SAMPLES,
   hourly: { views: null, subs: null },
   hrange: 'all',
   hmetric: 'views',
@@ -879,7 +819,18 @@ const S = {
   vstatsLocal: {},
   memo: null,
   dataGen: 0,
-  advSort: { key: 'pub', dir: -1 },
+  vsort: { key: 'views', dir: -1 },
+  vq: '',
+  vall: false,
+  vopen: new Set(),
+  vt: null,
+  vheadSig: '',
+  medRow: null,
+  pfLive: {},
+  pfIds: {},
+  pfTimer: 0,
+  pfBusy: false,
+  pfDue: false,
   vstream: null,
   vstreamBusy: false,
   raf: 0,
@@ -1056,52 +1007,8 @@ function loadVideoHist(chId, id) {
   return raw.filter(p => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1])).sort((a, b) => a[0] - b[0]);
 }
 
-function loadSel(chId) {
-  const raw = store.get('ytlive.sel.' + chId, null);
-  if (!raw || !Array.isArray(raw.ids)) return { auto: true, ids: [] };
-  const ids = raw.ids.filter(x => Array.isArray(x) && typeof x[0] === 'string' && [0, 1, 2].includes(x[1])).slice(0, 3);
-  return { auto: !!raw.auto, ids };
-}
-
-function saveSel() {
-  if (S.channel) store.set('ytlive.sel.' + S.channel.id, S.sel);
-}
-
-function syncSel() {
-  if (S.sel.auto) {
-    let newest = null;
-    for (const v of S.videos.values()) if (!newest || v.published > newest.published) newest = v;
-    S.sel.ids = newest ? [[newest.id, 0]] : [];
-  } else {
-    S.sel.ids = S.sel.ids.filter(x => S.videos.has(x[0]));
-  }
-}
-
-function slotOf(id) {
-  const x = S.sel.ids.find(y => y[0] === id);
-  return x ? x[1] : -1;
-}
-
-function toggleSel(id) {
-  if (!S.channel || !S.videos.has(id)) return;
-  const ids = S.sel.ids;
-  const i = ids.findIndex(x => x[0] === id);
-  if (i >= 0) {
-    ids.splice(i, 1);
-  } else {
-    if (ids.length >= 3) ids.shift();
-    const used = new Set(ids.map(x => x[1]));
-    ids.push([id, [0, 1, 2].find(k => !used.has(k))]);
-  }
-  S.sel.auto = false;
-  saveSel();
-  renderTable();
-  renderLaunchAll();
-}
-
 function loadChannelLocal(chId) {
   S.hist = loadHist(chId);
-  S.sel = loadSel(chId);
   S.hourly = { views: loadHourly(chId, 'views', S.hist), subs: loadHourly(chId, 'subs', null) };
   S.vl = loadVL(chId);
   S.smin = loadSmin(chId);
@@ -1135,10 +1042,9 @@ function commitFull({ ch, ids, items }, now) {
     const raw = Number(st.viewCount || 0);
     const published = Date.parse(sn.publishedAt) || 0;
     let v = S.videos.get(it.id);
-    const isNew = !v;
     if (!v) {
       const known = S.vl.get(it.id);
-      v = { id: it.id, hist: loadVideoHist(ch.id, it.id), dirty: false, base: 0, views: known && known.length ? known[known.length - 1][1] : null };
+      v = { id: it.id, hist: loadVideoHist(ch.id, it.id), dirty: false, views: known && known.length ? known[known.length - 1][1] : null };
       S.videos.set(it.id, v);
     }
     Object.assign(v, {
@@ -1151,14 +1057,12 @@ function commitFull({ ch, ids, items }, now) {
       comments: count(st.commentCount)
     });
     v.ok = takeViews(v, raw, now);
-    if (isNew) v.base = published > S.sessionStart ? 0 : v.views;
     seen.add(it.id);
   }
   for (const id of [...S.videos.keys()]) if (!seen.has(id)) S.videos.delete(id);
   S.lastList = now;
   S.lastCheck = S.lastList;
   S.lastSubs = S.lastList;
-  syncSel();
 }
 
 function commitStats(items, now) {
@@ -1349,11 +1253,13 @@ async function cycle(forceList) {
     S.lastPoll = now;
     S.fails = 0;
     S.note = '';
+    pfSaveCurrent(now);
     hideAlert();
     if (before == null) reveal();
     renderAll(before);
     schedule(S.cfg.interval * 1000);
     ensureRemote();
+    pfKick();
   } catch (e) {
     if (gen === S.gen) onError(e);
   } finally {
@@ -1757,6 +1663,7 @@ async function fetchRemote(manual) {
   renderChanPick();
   renderStatus();
   if (S.total != null) renderPortfolio();
+  pfKick();
 }
 
 function applyRemoteView() {
@@ -1774,7 +1681,7 @@ function applyRemoteView() {
   for (const x of R.latest.videos) {
     let v = S.videos.get(x.id);
     if (!v) {
-      v = { id: x.id, hist: loadVideoHist(ch.id, x.id), dirty: false, base: x.published > S.sessionStart ? 0 : x.views };
+      v = { id: x.id, hist: loadVideoHist(ch.id, x.id), dirty: false };
       S.videos.set(x.id, v);
     }
     Object.assign(v, x);
@@ -1785,7 +1692,6 @@ function applyRemoteView() {
   }
   for (const id of [...S.videos.keys()]) if (!seen.has(id)) S.videos.delete(id);
   S.known = seen;
-  syncSel();
   const before = S.total;
   Object.assign(S, { total, likes, comments, lastPoll: R.latest.t });
   hideAlert();
@@ -1934,13 +1840,18 @@ function resetState(keepView) {
   if (!keepView) $('live').hidden = true;
   $('bump').classList.remove('show');
   S.videos.clear();
-  for (const r of S.rows.values()) r.tr.remove();
+  for (const r of S.rows.values()) {
+    r.tr.remove();
+    r.det.remove();
+  }
   S.rows.clear();
+  if (S.medRow) S.medRow.tr.remove();
   Object.assign(S, {
     busy: false,
     channel: null,
     known: new Set(),
-    sel: { auto: true, ids: [] },
+    vopen: new Set(),
+    vt: null,
     hourly: { views: null, subs: null },
     hvideoFor: '',
     hvsig: null,
@@ -1978,7 +1889,6 @@ function resetState(keepView) {
   });
   hideAlert();
   hideHover();
-  hideLaunchHover();
   hideHourHover();
   hideZoomHover();
   hideMinuteHover();
@@ -2055,8 +1965,7 @@ function renderMerged() {
   renderData();
   renderHourly();
   renderHourlyData();
-  renderLaunchAll();
-  renderAdvanced();
+  renderVideos();
 }
 
 function gapWhy() {
@@ -2066,9 +1975,6 @@ function gapWhy() {
 function renderNotes() {
   const remote = !!remoteFor();
   $('estName').textContent = remote ? 'Estimated (gap in readings)' : 'Estimated (page closed)';
-  $('lfoot').textContent = remote
-    ? 'The recorder follows each upload for its first 8 days, about every 10 minutes. Use the dots in the uploads list to highlight up to three.'
-    : 'Uploads are tracked from the moment this page first sees them, so keep it open when you post. Use the dots in the uploads list to highlight up to three.';
   $('importNote').hidden = !remote;
 }
 
@@ -2078,19 +1984,16 @@ function renderAll(before) {
   renderTiles();
   renderPortfolio();
   renderMinutes();
-  renderTable();
   renderChart();
   renderData();
   renderHourly();
   renderHourlyData();
-  renderLaunchAll();
-  renderAdvanced();
+  renderVideos();
 }
 
-function renderLaunchAll() {
-  renderLaunch();
-  renderLaunchNote();
-  renderLaunchData();
+function renderVideos() {
+  renderAdvanced();
+  renderTable();
 }
 
 function renderHead() {
@@ -2263,27 +2166,6 @@ function renderTiles() {
   }
 }
 
-function makeRow() {
-  const img = h('img', { alt: '', loading: 'lazy' });
-  const a = h('a', { target: '_blank', rel: 'noopener' });
-  const pick = h('button', { class: 'swatch', type: 'button', 'aria-pressed': 'false' });
-  const r = {
-    img,
-    a,
-    pick,
-    sig: null,
-    pub: h('td', { class: 'pub dim' }),
-    views: h('td', { class: 'num' }),
-    delta: h('td', { class: 'num since' }),
-    likes: h('td', { class: 'num' }),
-    comments: h('td', { class: 'num com' })
-  };
-  r.tr = h('tr', null, h('td', { class: 'pick' }, pick), h('td', { class: 'thumb' }, img), h('td', { class: 'title' }, a), r.pub, r.views, r.delta, r.likes, r.comments);
-  r.tr.addEventListener('animationend', () => r.tr.classList.remove('bump'));
-  pick.addEventListener('click', () => toggleSel(pick.dataset.id));
-  return r;
-}
-
 function ordinal(n) {
   const t = n % 100;
   return n + (t >= 11 && t <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
@@ -2305,7 +2187,7 @@ function dayRanks() {
   return out;
 }
 
-function fillRow(r, v, rank) {
+function fillRow(r, v, rank, x, adv) {
   if (v.thumb && r.img.getAttribute('src') !== v.thumb) r.img.src = v.thumb;
   r.a.href = (v.short ? 'https://www.youtube.com/shorts/' : 'https://www.youtube.com/watch?v=') + encodeURIComponent(v.id);
   r.a.textContent = v.title;
@@ -2315,46 +2197,270 @@ function fillRow(r, v, rank) {
   if (r.pubSig !== when + '|' + nth) {
     r.pubSig = when + '|' + nth;
     r.pub.replaceChildren(when, nth ? h('span', { class: 'nth' }, nth) : '');
+    r.mpub.textContent = [v.published ? dateOnly(v.published) : '', nth].filter(Boolean).join(' · ');
   }
-  r.views.textContent = fmt(v.views);
-  const d = v.views - v.base;
-  r.delta.textContent = signed(d);
-  r.delta.className = 'num since ' + (d > 0 ? 'good' : 'dim');
-  const slot = slotOf(v.id);
-  r.pick.dataset.id = v.id;
-  r.pick.className = 'swatch' + (slot >= 0 ? ' s' + (slot + 1) : '');
-  r.pick.setAttribute('aria-pressed', String(slot >= 0));
-  r.pick.setAttribute('aria-label', `Highlight “${v.title}” on launch curves`);
-  r.likes.textContent = v.likes == null ? '–' : fmt(v.likes);
-  r.comments.textContent = v.comments == null ? '–' : fmt(v.comments);
+  const src = adv.get(v.id);
+  for (const c of VCOLS) {
+    const val = x[c.key];
+    const td = r.cells[c.key];
+    td.textContent = val == null ? '–' : c.fmt(val);
+    td.className = val == null ? 'num dim' : 'num';
+    if (c.studio && val != null && src && src.when[c.key] != null) td.title = advWhen(src, c.key);
+    else td.removeAttribute('title');
+  }
   const sig = `${v.views}|${v.likes}|${v.comments}`;
   if (r.sig != null && r.sig !== sig) flashEl(r.tr);
   r.sig = sig;
+  const open = S.vopen.has(v.id);
+  r.tr.setAttribute('aria-expanded', String(open));
+  r.det.hidden = !open;
+  if (open) r.det.firstChild.replaceChildren(h('div', { class: 'vd' }, detailKids(v, x)));
+}
+
+function videoDay(v, now) {
+  if (v.views == null) return null;
+  if (v.published && v.published <= now && now - v.published <= 86400e3) return v.views;
+  const pts = videoReadings(v);
+  const cut = now - 86400e3;
+  let top = null;
+  let a = null;
+  let b = null;
+  for (const p of pts) {
+    if (p[0] <= cut) {
+      a = p;
+      top = top == null ? p[1] : Math.max(top, p[1]);
+    } else {
+      b = p;
+      break;
+    }
+  }
+  let base;
+  if (!a) {
+    if (!b || b[0] - cut > GAP_MAX) return null;
+    base = b[1];
+  } else if (cut - a[0] <= GAP_MAX || (b && b[1] <= top) || (!b && v.views <= top)) {
+    base = top;
+  } else if (b && b[0] - a[0] <= 6 * 3600e3) {
+    base = top + ((b[1] - top) * (cut - a[0])) / (b[0] - a[0]);
+  } else {
+    return null;
+  }
+  return Math.max(0, Math.round(v.views - base));
+}
+
+function videoVals(v, adv, now) {
+  const r = adv.get(v.id);
+  const x = r ? r.vals : {};
+  const n = k => (Number.isFinite(x[k]) ? x[k] : null);
+  return { views: v.views, day: videoDay(v, now), likes: v.likes, comments: v.comments, avd: n('avd'), apv: n('apv') };
+}
+
+function vStats(vals) {
+  const out = {};
+  for (const c of VCOLS) {
+    const xs = [];
+    for (const x of vals.values()) if (x[c.key] != null) xs.push(x[c.key]);
+    xs.sort((p, q) => q - p);
+    out[c.key] = { xs, med: xs.length ? median(xs) : null };
+  }
+  return out;
+}
+
+function rankOf(xs, x) {
+  let lo = 0;
+  let hi = xs.length;
+  while (lo < hi) {
+    const m = (lo + hi) >> 1;
+    if (xs[m] > x) lo = m + 1;
+    else hi = m;
+  }
+  return lo + 1;
+}
+
+function signedText(d, f) {
+  return (d < 0 ? '−' : '+') + f(Math.abs(d));
+}
+
+function ratioText(r) {
+  if (r === 0) return '0×';
+  if (r >= 10) return `${fmt(r)}×`;
+  if (r >= 1) return `${(Math.round(r * 10) / 10).toFixed(1)}×`;
+  if (r >= 0.01) return `${(Math.round(r * 100) / 100).toFixed(2)}×`;
+  return '<0.01×';
+}
+
+function compareSpan(val, med, dfmt) {
+  const cls = val > med ? 'good' : val < med ? 'bad' : 'dim';
+  const arrow = val > med ? '▲ ' : val < med ? '▼ ' : '';
+  const rel = med > 0 && val >= 0 ? ratioText(val / med) : dfmt(val - med);
+  return h('span', { class: 'vd-cmp ' + cls }, arrow + rel);
+}
+
+function ageCompare(v, now) {
+  if (!v.published || v.views == null) return null;
+  const age = (now - v.published) / 1000;
+  if (age < 0 || age >= LAUNCH_AGE) return null;
+  if (!S.vt.series) {
+    S.vt.series = [...S.videos.values()].map(o => {
+      const pts = effVH(o);
+      return { id: o.id, runs: pts.length && pts[0][0] <= ANCHOR_MAX ? runsOf(pts) : [] };
+    }).filter(x => x.runs.length);
+  }
+  const others = [];
+  for (const sr of S.vt.series) {
+    if (sr.id === v.id) continue;
+    const x = valueAt(sr.runs, age);
+    if (x != null) others.push(x);
+  }
+  return { age, n: others.length, med: others.length >= 3 ? median(others) : null };
+}
+
+function detailKids(v, x) {
+  const out = [];
+  const a = ageCompare(v, S.vt.now);
+  if (a) {
+    const head = `At ${ageText(a.age)} old: ${fmt(v.views)} views`;
+    out.push(a.med == null
+      ? h('p', { class: 'vd-age' }, `${head}. The comparison with your median upload at the same age appears once 3 other uploads have been tracked from launch to that age.`)
+      : h('p', { class: 'vd-age' }, `${head} vs ${fmt(a.med)} for your median upload at that age, out of ${fmt(a.n)} tracked from launch · `, compareSpan(v.views, a.med, d => signed(d))));
+  }
+  out.push(h('div', { class: 'vd-grid' }, VCOLS.map(c => {
+    const val = x[c.key];
+    const st = S.vt.stats[c.key];
+    const kids = [h('p', { class: 'vd-label' }, c.label)];
+    if (val == null) {
+      kids.push(h('p', { class: 'vd-value dim' }, '–'), h('p', { class: 'vd-line' }, c.studio ? 'Not in the Studio export' : 'Not enough history yet'));
+    } else {
+      kids.push(h('p', { class: 'vd-value' }, c.fmt(val)),
+        h('p', { class: 'vd-line' }, compareSpan(val, st.med, c.dfmt), ` vs median ${c.fmt(st.med)}`),
+        h('p', { class: 'vd-line' }, `#${fmt(rankOf(st.xs, val))} of ${fmt(st.xs.length)}`));
+    }
+    return h('div', { class: 'vd-card' }, kids);
+  })));
+  return out;
+}
+
+function makeRow(id) {
+  const img = h('img', { alt: '', loading: 'lazy' });
+  const a = h('a', { target: '_blank', rel: 'noopener' });
+  const pub = h('td', { class: 'pub dim' });
+  const cells = {};
+  for (const c of VCOLS) cells[c.key] = h('td', { class: 'num' });
+  const mpub = h('span', { class: 'nth mpub' });
+  const tr = h('tr', { class: 'vrow', tabindex: '0', 'aria-expanded': 'false', 'data-id': id }, h('td', { class: 'thumb' }, img), h('td', { class: 'title' }, a, mpub), pub, VCOLS.map(c => cells[c.key]));
+  const det = h('tr', { class: 'vdetail', hidden: '' }, h('td', { colspan: String(3 + VCOLS.length) }));
+  tr.addEventListener('animationend', () => tr.classList.remove('bump'));
+  return { tr, det, img, a, mpub, pub, cells, sig: null, pubSig: null };
+}
+
+function medianRow(stats, n) {
+  if (!S.medRow) {
+    const cells = {};
+    for (const c of VCOLS) cells[c.key] = h('td', { class: 'num' });
+    const pub = h('td', { class: 'pub dim' });
+    const mpub = h('span', { class: 'nth mpub' });
+    const tr = h('tr', { class: 'med-row' }, h('td', { class: 'thumb' }), h('td', { class: 'title' }, 'Median', mpub), pub, VCOLS.map(c => cells[c.key]));
+    S.medRow = { tr, cells, pub, mpub };
+  }
+  const m = S.medRow;
+  m.pub.textContent = `of ${fmt(n)} upload${n === 1 ? '' : 's'}`;
+  m.mpub.textContent = m.pub.textContent;
+  for (const c of VCOLS) {
+    const med = stats[c.key].med;
+    m.cells[c.key].textContent = med == null ? '–' : c.fmt(med);
+  }
+  return m.tr;
+}
+
+function renderVHead() {
+  const { key, dir } = S.vsort;
+  const sig = key + dir;
+  if (S.vheadSig === sig && $('vHead').firstChild) return;
+  S.vheadSig = sig;
+  const f = document.activeElement;
+  const fk = f && f.closest && f.closest('#vHead') ? f.dataset.key : '';
+  const th = (k, label, cls) => {
+    const attrs = { class: cls };
+    if (key === k) attrs['aria-sort'] = dir > 0 ? 'ascending' : 'descending';
+    return h('th', attrs, h('button', { type: 'button', 'data-key': k }, label + (key === k ? (dir > 0 ? ' ↑' : ' ↓') : '')));
+  };
+  $('vHead').replaceChildren(h('tr', null,
+    h('th', { class: 'thumb' }, h('span', { class: 'sr' }, 'Thumbnail')),
+    th('title', 'Video', 'title'),
+    th('pub', 'Published', 'pub'),
+    VCOLS.map(c => th(c.key, c.label, 'num'))));
+  if (fk) {
+    const b = $('vHead').querySelector(`button[data-key="${fk}"]`);
+    if (b) b.focus({ preventScroll: true });
+  }
+}
+
+function setVSort(key) {
+  const cur = S.vsort;
+  S.vsort = { key, dir: cur.key === key ? -cur.dir : key === 'title' ? 1 : -1 };
+  store.set('ytlive.vsort', S.vsort);
+  renderTable();
+}
+
+function toggleVideo(id) {
+  if (S.vopen.has(id)) S.vopen.delete(id);
+  else S.vopen.add(id);
+  renderTable();
 }
 
 function renderTable() {
-  const list = [...S.videos.values()].sort((a, b) => b.views - a.views || b.published - a.published);
-  const body = $('rows');
-  const keep = new Set();
+  if (!S.channel || S.total == null) return;
+  const now = S.lastPoll || Date.now();
+  const adv = advData().rows;
+  const all = [...S.videos.values()];
+  const vals = new Map(all.map(v => [v.id, videoVals(v, adv, now)]));
+  const stats = vStats(vals);
+  S.vt = { vals, stats, now, series: null };
+  const q = S.vq.trim().toLowerCase();
+  const list = q ? all.filter(v => String(v.title || '').toLowerCase().includes(q) || v.id.toLowerCase() === q) : all;
+  const { key, dir } = S.vsort;
+  const get = v => (key === 'title' ? String(v.title || '') : key === 'pub' ? v.published || 0 : vals.get(v.id)[key]);
+  list.sort((x, y) => {
+    const a = get(x);
+    const b = get(y);
+    const tie = (y.views || 0) - (x.views || 0) || (y.published || 0) - (x.published || 0);
+    if (a == null || b == null) return a == null && b == null ? tie : a == null ? 1 : -1;
+    return (key === 'title' ? a.localeCompare(b) : a - b) * dir || tie;
+  });
+  const shown = S.vall ? list : list.slice(0, VTOP);
+  renderVHead();
+  const keep = new Set(all.map(v => v.id));
+  for (const id of [...S.vopen]) if (!keep.has(id)) S.vopen.delete(id);
+  for (const [id, r] of S.rows) {
+    if (keep.has(id)) continue;
+    r.tr.remove();
+    r.det.remove();
+    S.rows.delete(id);
+  }
   const ranks = dayRanks();
-  for (const v of list) {
-    keep.add(v.id);
+  const kids = [medianRow(stats, all.length)];
+  for (const v of shown) {
     let r = S.rows.get(v.id);
     if (!r) {
-      r = makeRow();
+      r = makeRow(v.id);
       S.rows.set(v.id, r);
     }
-    fillRow(r, v, ranks.get(v.id));
-    body.appendChild(r.tr);
+    fillRow(r, v, ranks.get(v.id), vals.get(v.id), adv);
+    kids.push(r.tr, r.det);
   }
-  for (const [id, r] of S.rows) {
-    if (!keep.has(id)) {
-      r.tr.remove();
-      S.rows.delete(id);
-    }
+  const body = $('rows');
+  const cur = body.children;
+  if (cur.length !== kids.length || kids.some((k, i) => cur[i] !== k)) {
+    const f = document.activeElement;
+    body.replaceChildren(...kids);
+    if (f && kids.includes(f) && document.activeElement !== f) f.focus({ preventScroll: true });
   }
-  $('upCount').textContent = '· ' + fmt(list.length);
-  $('sinceHead').textContent = 'Since ' + clock(S.sessionStart);
+  $('upCount').textContent = q ? `· ${fmt(list.length)} of ${fmt(all.length)}` : '· ' + fmt(all.length);
+  $('upEmpty').hidden = list.length > 0;
+  $('upEmpty').textContent = list.length ? '' : `No uploads match “${S.vq.trim()}”.`;
+  const more = $('upMore');
+  more.hidden = list.length <= VTOP;
+  more.textContent = S.vall ? `Show top ${VTOP}` : `Show all ${fmt(list.length)}`;
 }
 
 function chartData() {
@@ -2787,7 +2893,7 @@ function importStats(text) {
   store.set('ytlive.vstats.' + S.channel.id, S.vstatsLocal);
   const known = ids.filter(id => S.videos.has(id)).length;
   status.textContent = `Imported stats for ${fmt(known)} upload${known === 1 ? '' : 's'}` + (ids.length > known ? `, ${fmt(ids.length - known)} not on this channel` : '') + '.';
-  renderAdvanced();
+  renderVideos();
   $('advTitle').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
@@ -2825,7 +2931,7 @@ function clearStudioHours() {
   renderMinutes();
   renderHourly();
   renderHourlyData();
-  renderAdvanced();
+  renderVideos();
 }
 
 function syncHVideo() {
@@ -3176,6 +3282,7 @@ async function loadStream() {
   if (S.total == null) return;
   renderTiles();
   renderMinutes();
+  renderTable();
   if (S.zoom) renderZoom();
 }
 
@@ -3714,234 +3821,6 @@ function valueAt(runs, age) {
   return null;
 }
 
-function clipRun(r, win) {
-  const out = [];
-  for (let i = 0; i < r.length; i++) {
-    const p = r[i];
-    if (p[0] <= win) {
-      out.push(p);
-      continue;
-    }
-    if (out.length) {
-      const q = r[i - 1];
-      out.push([win, q[1] + ((p[1] - q[1]) * (win - q[0])) / (p[0] - q[0])]);
-    }
-    break;
-  }
-  return out;
-}
-
-function launchSeries() {
-  const out = [];
-  for (const v of S.videos.values()) {
-    const pts = effVH(v);
-    if (pts.length) out.push({ v, pts, runs: runsOf(pts), slot: slotOf(v.id) });
-  }
-  return out;
-}
-
-function picks() {
-  return S.sel.ids.slice().sort((a, b) => a[1] - b[1]).map(([id, slot]) => ({ v: S.videos.get(id), slot })).filter(x => x.v);
-}
-
-function renderLegend(series) {
-  const has = new Set(series.map(sr => sr.v.id));
-  const items = picks().map(({ v, slot }) => h('span', { class: 'key' },
-    h('span', { class: 'lk s' + (slot + 1) }),
-    h('span', { class: 'kname', title: v.title }, has.has(v.id) ? v.title : `${v.title} (no data yet)`)));
-  items.push(h('span', { class: 'key' }, h('span', { class: 'lk med' }), h('span', { class: 'kname' }, 'Median upload')));
-  items.push(h('span', { class: 'key' }, h('span', { class: 'lk ctx' }), h('span', { class: 'kname' }, 'Other uploads')));
-  $('legend').replaceChildren(...items);
-}
-
-function renderLaunch() {
-  const series = launchSeries();
-  renderLegend(series);
-  const box = $('lchart');
-  const svg = $('lsvg');
-  const H = 260;
-  const W = sizeSvg(box, svg, H);
-  const win = AGES[S.age];
-  const parts = series.map(sr => sr.runs.map(r => clipRun(r, win)).filter(p => p.length));
-  const samples = [];
-  for (let i = 0; i <= SAMPLES; i++) {
-    const a = (win * i) / SAMPLES;
-    const vals = series.map(sr => valueAt(sr.runs, a)).filter(x => x != null);
-    samples.push([a, vals.length >= 3 ? median(vals) : null]);
-  }
-  if (!parts.some(ps => ps.some(p => p.length >= 2))) {
-    S.lgeom = null;
-    hideLaunchHover();
-    s('text', { x: W / 2, y: H / 2, 'text-anchor': 'middle', class: 'empty' }, svg).textContent = `Nothing recorded in the ${AGE_TEXT[S.age]} yet.`;
-    box.setAttribute('aria-label', 'Launch curves chart, nothing recorded in this window yet');
-    return;
-  }
-  let ymax = 4;
-  for (const ps of parts) for (const p of ps) for (const q of p) ymax = Math.max(ymax, q[1]);
-  for (const m of samples) if (m[1] != null) ymax = Math.max(ymax, m[1]);
-  const ax = yAxis(0, ymax);
-  const L = ax.width;
-  const R = 16;
-  const T = 10;
-  const B = 28;
-  const pw = W - L - R;
-  const ph = H - T - B;
-  const X = a => L + (a / win) * pw;
-  const Y = v => T + (1 - v / ax.y1) * ph;
-  for (const v of ax.ticks) {
-    const y = Math.round(Y(v)) + 0.5;
-    s('line', { x1: L, x2: W - R, y1: y, y2: y, class: v === 0 ? 'axis' : 'grid' }, svg);
-    s('text', { x: L - 8, y: y + 4, 'text-anchor': 'end' }, svg).textContent = ax.label(v);
-  }
-  let lastX = -Infinity;
-  for (let a = 0; a <= win; a += AGE_TICKS[S.age]) {
-    const x = X(a);
-    if (x - lastX < 34) continue;
-    lastX = x;
-    const anchor = a === 0 ? 'start' : a === win ? 'end' : 'middle';
-    s('text', { x, y: H - 8, 'text-anchor': anchor }, svg).textContent = ageTick(a, S.age === '7d');
-  }
-  const pathOf = p => p.map((q, i) => (i ? 'L' : 'M') + X(q[0]).toFixed(1) + ',' + Y(q[1]).toFixed(1)).join('');
-  series.forEach((sr, i) => {
-    if (sr.slot >= 0) return;
-    for (const p of parts[i]) if (p.length >= 2) s('path', { d: pathOf(p), class: 'ctx' }, svg);
-  });
-  let med = '';
-  let pen = false;
-  for (const [a, m] of samples) {
-    if (m == null) {
-      pen = false;
-      continue;
-    }
-    med += (pen ? 'L' : 'M') + X(a).toFixed(1) + ',' + Y(m).toFixed(1);
-    pen = true;
-  }
-  if (med) s('path', { d: med, class: 'med' }, svg);
-  const picked = series.map((sr, i) => ({ ...sr, parts: parts[i] })).filter(sr => sr.slot >= 0).sort((a, b) => a.slot - b.slot);
-  for (const sr of picked) {
-    const cls = 's' + (sr.slot + 1);
-    for (const p of sr.parts) {
-      if (p.length >= 2) s('path', { d: pathOf(p), class: 'sel ' + cls }, svg);
-      else s('circle', { cx: X(p[0][0]), cy: Y(p[0][1]), r: 3, class: 'fill ' + cls }, svg);
-    }
-    const end = sr.pts[sr.pts.length - 1];
-    if (end[0] <= win) {
-      s('circle', { cx: X(end[0]), cy: Y(end[1]), r: 6, class: 'ring' }, svg);
-      s('circle', { cx: X(end[0]), cy: Y(end[1]), r: 4, class: 'fill ' + cls }, svg);
-    }
-  }
-  const g = s('g', { visibility: 'hidden' }, svg);
-  const dotPair = cls => [s('circle', { r: 6, class: 'ring' }, g), s('circle', { r: 4, class: 'fill ' + cls }, g)];
-  S.lhv = {
-    g,
-    line: s('line', { y1: T, y2: T + ph, class: 'xhair' }, g),
-    dots: picked.map(sr => dotPair('s' + (sr.slot + 1))),
-    med: dotPair('medf')
-  };
-  S.lgeom = { W, H, L, T, pw, ph, win, X, Y, picked, samples };
-  const named = picked.map(sr => shorten(sr.v.title, 40)).join(', ');
-  box.setAttribute('aria-label', `Launch curves, ${AGE_TEXT[S.age]} after upload${named ? ', highlighting ' + named : ''}`);
-  if (S.lhoverOn) showLaunchHover(S.lhoverIdx);
-}
-
-function showLaunchHover(i) {
-  const g = S.lgeom;
-  if (!g) return;
-  const idx = Math.max(0, Math.min(SAMPLES, i));
-  S.lhoverOn = true;
-  S.lhoverIdx = idx;
-  const [a, m] = g.samples[idx];
-  const x = g.X(a);
-  S.lhv.line.setAttribute('x1', x);
-  S.lhv.line.setAttribute('x2', x);
-  const place = (pair, val) => {
-    for (const c of pair) {
-      c.setAttribute('visibility', val == null ? 'hidden' : 'visible');
-      if (val != null) {
-        c.setAttribute('cx', x);
-        c.setAttribute('cy', g.Y(val));
-      }
-    }
-  };
-  const rows = g.picked.map((sr, k) => {
-    const val = valueAt(sr.runs, a);
-    place(S.lhv.dots[k], val);
-    return h('div', { class: 'trow' },
-      h('span', { class: 'lk s' + (sr.slot + 1) }),
-      h('strong', null, val == null ? '–' : fmt(val)),
-      h('span', { class: 'tname' }, shorten(sr.v.title, 34)));
-  });
-  place(S.lhv.med, m);
-  rows.push(h('div', { class: 'trow' }, h('span', { class: 'lk med' }), h('strong', null, m == null ? '–' : fmt(m)), h('span', { class: 'tname' }, 'Median upload')));
-  S.lhv.g.setAttribute('visibility', 'visible');
-  const tip = $('ltip');
-  tip.replaceChildren(h('div', { class: 'thead' }, `${ageText(a)} after upload`), ...rows);
-  placeTip(tip, x, g.T + 4, g.W, g.H);
-}
-
-function hideLaunchHover() {
-  S.lhoverOn = false;
-  if (S.lhv) S.lhv.g.setAttribute('visibility', 'hidden');
-  $('ltip').hidden = true;
-}
-
-function onLaunchPointer(e) {
-  const g = S.lgeom;
-  if (!g) return;
-  const r = $('lsvg').getBoundingClientRect();
-  const x = (e.clientX - r.left) * (g.W / r.width);
-  if (x < g.L - 12 || x > g.L + g.pw + 12) {
-    hideLaunchHover();
-    return;
-  }
-  showLaunchHover(Math.round(((x - g.L) / g.pw) * SAMPLES));
-}
-
-function renderLaunchNote() {
-  const el = $('launchNote');
-  const first = picks()[0];
-  const series = first ? launchSeries() : [];
-  const mine = first && series.find(sr => sr.v.id === first.v.id);
-  if (!mine) {
-    el.hidden = true;
-    return;
-  }
-  const v = mine.v;
-  const [age, views] = mine.pts[mine.pts.length - 1];
-  const others = [];
-  for (const sr of series) {
-    if (sr.v.id === v.id) continue;
-    const x = valueAt(sr.runs, age);
-    if (x != null) others.push(x);
-  }
-  const head = `“${shorten(v.title, 44)}” has ${fmt(views)} views at ${ageText(age)}`;
-  if (others.length < 3) {
-    el.textContent = `${head}. A comparison appears once 3 other uploads have been tracked to that age.`;
-  } else {
-    const m = median(others);
-    const r = views / m;
-    el.textContent = m > 0 ? `${head}: ${r >= 0.95 ? r.toFixed(1) + '×' : Math.round(r * 100) + '% of'} your median upload at the same age (${fmt(m)}).` : `${head}. Your median upload had 0 views at that age.`;
-  }
-  el.hidden = false;
-}
-
-function renderLaunchData() {
-  if (!$('launchDetails').open) return;
-  const series = launchSeries().sort((a, b) => b.v.published - a.v.published);
-  const head = h('tr', null, h('th', null, 'Upload'), MILESTONES.map(a => h('th', { class: 'num' }, ageTick(a))));
-  const medRow = h('tr', { class: 'med-row' }, h('td', null, 'Median upload'), MILESTONES.map(a => {
-    const vals = series.map(sr => valueAt(sr.runs, a)).filter(x => x != null);
-    return h('td', { class: 'num' }, vals.length >= 3 ? fmt(median(vals)) : '–');
-  }));
-  const rows = series.map(sr => h('tr', null,
-    h('td', { title: sr.v.title }, shorten(sr.v.title, 44)),
-    MILESTONES.map(a => {
-      const x = valueAt(sr.runs, a);
-      return h('td', { class: 'num' }, x == null ? '–' : fmt(x));
-    })));
-  $('launchTable').replaceChildren(h('table', { class: 'small' }, h('thead', null, head), h('tbody', null, medRow, rows)));
-}
-
 function advData() {
   const R = remoteFor();
   const rows = new Map();
@@ -3978,57 +3857,32 @@ function advData() {
 }
 
 function advTiles(rows, total) {
-  const t = { feed: 0, feedN: 0, engaged: 0, engN: 0, hours: 0, hoursN: 0, avdW: 0, avdD: 0, apvW: 0, apvD: 0, subs: 0, subsN: 0 };
+  let avdW = 0;
+  let avdD = 0;
+  let apvW = 0;
+  let apvD = 0;
   for (const [id, r] of rows) {
     const v = S.videos.get(id);
     if (!v) continue;
     const x = r.vals;
     const views = x.views != null ? x.views : v.views || 0;
-    if (x.feed != null) {
-      t.feed += x.feed;
-      t.feedN += 1;
-    }
-    if (x.engaged != null) {
-      t.engaged += x.engaged;
-      t.engN += 1;
-    }
-    if (x.hours != null) {
-      t.hours += x.hours;
-      t.hoursN += 1;
-    }
     if (x.avd != null && views > 0) {
-      t.avdW += x.avd * views;
-      t.avdD += views;
+      avdW += x.avd * views;
+      avdD += views;
     }
     if (x.apv != null && views > 0) {
-      t.apvW += x.apv * views;
-      t.apvD += views;
-    }
-    if (x.subs != null) {
-      t.subs += x.subs;
-      t.subsN += 1;
+      apvW += x.apv * views;
+      apvD += views;
     }
   }
   const T = total || {};
-  const pick = (k, own) => (T[k] != null ? T[k] : own);
-  const avd = pick('avd', t.avdD ? t.avdW / t.avdD : null);
-  const apv = pick('apv', t.apvD ? t.apvW / t.apvD : null);
-  const hours = pick('hours', t.hoursN ? t.hours : null);
-  const engaged = pick('engaged', t.engN ? t.engaged : null);
-  const feed = pick('feed', t.feedN ? t.feed : null);
-  const views = pick('views', null);
-  const subs = pick('subs', t.subsN ? t.subs : null);
+  const avd = T.avd != null ? T.avd : avdD ? avdW / avdD : null;
+  const apv = T.apv != null ? T.apv : apvD ? apvW / apvD : null;
   const from = total ? 'Studio’s channel total' : 'weighted by views';
-  const cands = [
+  return [
     avd != null && ['Avg view duration', durText(avd), from],
-    apv != null && ['Avg % viewed', pctText(apv), apv > 100 ? 'over 100% means rewatches' : from],
-    hours != null && ['Watch time', hoursText(hours), total ? 'all Shorts' : `across ${fmt(t.hoursN)} upload${t.hoursN === 1 ? '' : 's'}`],
-    engaged != null && ['Engaged views', fmt(engaged), views ? `${pctText((engaged / views) * 100)} of views` : 'views past the first seconds'],
-    feed != null && ['Shown in feed', fmt(feed), 'times in the Shorts feed'],
-    views != null && ['Views', fmt(views), 'counted by Studio'],
-    subs != null && ['Subscribers', signed(subs), 'gained from Shorts']
-  ].filter(Boolean).slice(0, 6);
-  return cands.map(([label, value, sub]) => h('div', { class: 'tile' }, h('p', { class: 't-label' }, label), h('p', { class: 't-value' }, value), h('p', { class: 't-sub' }, sub)));
+    apv != null && ['Avg % viewed', pctText(apv), apv > 100 ? 'over 100% means rewatches' : from]
+  ].filter(Boolean).map(([label, value, sub]) => h('div', { class: 'tile' }, h('p', { class: 't-label' }, label), h('p', { class: 't-value' }, value), h('p', { class: 't-sub' }, sub)));
 }
 
 function advWhen(r, k) {
@@ -4036,17 +3890,10 @@ function advWhen(r, k) {
   return 'Studio export, ' + stamp(r.when[k]).replace(/:\d\d(?=\s|$)/, '');
 }
 
-function setAdvSort(key) {
-  const cur = S.advSort;
-  S.advSort = { key, dir: cur.key === key ? -cur.dir : -1 };
-  store.set('ytlive.advsort', S.advSort);
-  renderAdvanced();
-}
-
 function renderAdvanced() {
   if (!S.channel || S.total == null) return;
   const { rows, studioAt, A, total } = advData();
-  const list = [...rows].filter(([id]) => S.videos.has(id));
+  const list = [...rows].filter(([id, r]) => S.videos.has(id) && (r.vals.avd != null || r.vals.apv != null));
   const src = [];
   if (studioAt) src.push(`Studio export from ${stamp(studioAt).replace(/:\d\d(?=\s|$)/, '')}`);
   if (A && A.through) src.push(`YouTube Analytics through ${dateOnly(A.throughT)}, which runs 2–3 days behind`);
@@ -4056,47 +3903,11 @@ function renderAdvanced() {
   const has = list.length > 0;
   $('advCount').textContent = has ? `· ${fmt(list.length)} of ${fmt(S.videos.size)}` : '';
   $('advTiles').hidden = !has;
-  $('advWrap').hidden = !has;
   $('advEmpty').hidden = has;
   if (!has) {
-    $('advEmpty').textContent = 'Nothing here yet. In YouTube Studio open Insights → Advanced mode, choose Lifetime, filter Content type to Shorts, add Average view duration, Average percentage viewed and Engaged views, then export as .csv. Upload the .zip to the studio folder in your repo, or import Table data.csv under Import from YouTube Studio above. The recorder can also read the YouTube Analytics API on its own.';
+    $('advEmpty').textContent = 'Nothing here yet. In YouTube Studio open Insights → Advanced mode, choose Lifetime, filter Content type to Shorts, add Average view duration and Average percentage viewed, then export as .csv. Upload the .zip to the studio folder in your repo, or import Table data.csv under Import from YouTube Studio above. The recorder can also read the YouTube Analytics API on its own.';
   } else {
     $('advTiles').replaceChildren(...advTiles(list, total));
-    const cols = ADV_COLS.filter(c => list.some(([, r]) => r.vals[c.key] != null));
-    const sk = S.advSort.key;
-    const dir = S.advSort.dir;
-    const val = ([id, r]) => (sk === 'pub' ? (S.videos.get(id).published || 0) : r.vals[sk]);
-    list.sort((x, y) => {
-      const a = val(x);
-      const b = val(y);
-      if (a == null && b == null) return 0;
-      if (a == null) return 1;
-      if (b == null) return -1;
-      return (a - b) * dir;
-    });
-    const th = (key, label, cls) => {
-      const attrs = { class: cls || 'num' };
-      if (sk === key) attrs['aria-sort'] = dir > 0 ? 'ascending' : 'descending';
-      const b = h('button', { type: 'button', 'data-key': key }, label + (sk === key ? (dir > 0 ? ' ↑' : ' ↓') : ''));
-      b.addEventListener('click', () => setAdvSort(key));
-      return h('th', attrs, b);
-    };
-    $('advHead').replaceChildren(h('tr', null, th('pub', 'Video', ''), cols.map(c => th(c.key, c.label))));
-    const ranks = dayRanks();
-    $('advRows').replaceChildren(...list.map(([id, r]) => {
-      const v = S.videos.get(id);
-      const href = (v.short ? 'https://www.youtube.com/shorts/' : 'https://www.youtube.com/watch?v=') + encodeURIComponent(id);
-      const rank = ranks.get(id);
-      const nth = !rank ? '' : rank[1] === 1 ? 'only upload that day' : `${ordinal(rank[0])} of ${rank[1]} that day`;
-      const when = v.published ? `${dateOnly(v.published)}, ${clock(v.published)}` : '';
-      const cells = cols.map(c => {
-        const x = r.vals[c.key];
-        return h('td', x == null ? { class: 'num dim' } : { class: 'num', title: advWhen(r, c.key) }, x == null ? '–' : c.fmt(x));
-      });
-      return h('tr', null,
-        h('td', { class: 'title' }, h('a', { href, target: '_blank', rel: 'noopener', title: v.title }, v.title), h('span', { class: 'nth' }, [when, nth].filter(Boolean).join(' · '))),
-        cells);
-    }));
   }
   renderAdvDaily(A);
 }
@@ -4106,7 +3917,7 @@ function renderAdvDaily(A) {
   const rows = A ? A.daily : [];
   det.hidden = !rows.length;
   if (!rows.length || !det.open) return;
-  const cols = [['views', 'Views', fmt], ['engaged', 'Engaged', fmt], ['hours', 'Watch time', hoursText], ['avd', 'Avg duration', durText], ['apv', 'Avg % viewed', pctText], ['subs', 'Subs', signed], ['likes', 'Likes', fmt], ['shares', 'Shares', fmt]];
+  const cols = [['avd', 'Avg view duration', durText], ['apv', 'Avg % viewed', pctText]];
   const body = rows.slice().reverse().map(([day, x]) => h('tr', null,
     h('td', null, dateOnly(dayStart(day))),
     cols.map(([k, , f]) => h('td', { class: 'num' }, x[k] == null ? '–' : f(x[k])))));
@@ -4122,19 +3933,138 @@ function tickerOf(title) {
   return (t.length >= 3 ? t : words[0].slice(0, 3) + words.slice(1).map(w => w[0]).join('')).slice(0, 5);
 }
 
+function loadPfLive() {
+  const raw = store.get('ytlive.pflive', {});
+  const out = {};
+  const n = x => (Number.isFinite(x) ? x : null);
+  for (const [id, x] of Object.entries(raw && typeof raw === 'object' ? raw : {})) {
+    if (!x || !Number.isFinite(x.t) || !Number.isFinite(x.views)) continue;
+    out[id] = { t: x.t, views: x.views, subs: n(x.subs), likes: n(x.likes), comments: n(x.comments), uploads: n(x.uploads), vt: x.vt && typeof x.vt === 'object' ? x.vt : {} };
+  }
+  return out;
+}
+
+function savePfLive() {
+  store.set('ytlive.pflive', S.pfLive);
+}
+
+function pfSaveCurrent(t) {
+  if (!S.channel || S.total == null) return;
+  const vt = {};
+  for (const v of S.videos.values()) if (v.views != null) vt[v.id] = [v.views, v.low || 0];
+  S.pfLive[S.channel.id] = { t, views: S.total, subs: S.channel.subs, likes: S.likes, comments: S.comments, uploads: S.videos.size, vt };
+  savePfLive();
+}
+
+function pfUnits() {
+  let u = 0;
+  for (const c of S.chans) {
+    if (S.channel && c.id === S.channel.id) continue;
+    const ids = S.pfIds[c.id] ? S.pfIds[c.id].ids.length : 50;
+    const pages = Math.max(1, Math.ceil(ids / 50));
+    u += (86400e3 / PF_POLL) * (1 + pages) + (86400e3 / PF_LIST) * pages;
+  }
+  return Math.round(u);
+}
+
+function pfKick() {
+  if (S.cfg && !S.pfTimer && !S.pfBusy && S.chans.length > 1) S.pfTimer = setTimeout(pollOthers, 3000);
+}
+
+async function pollChannel(c) {
+  const r = await api('channels', { part: 'statistics,contentDetails', id: c.id });
+  const it = r.items && r.items[0];
+  if (!it) return false;
+  let list = S.pfIds[c.id];
+  if (!list || Date.now() - list.t >= PF_LIST) {
+    const rel = (it.contentDetails && it.contentDetails.relatedPlaylists) || {};
+    list = { t: Date.now(), ids: await loadUploadIds(rel.uploads || 'UU' + c.id.slice(2)) };
+    S.pfIds[c.id] = list;
+  }
+  const items = list.ids.length ? await loadVideos(list.ids, false) : [];
+  const t = Date.now();
+  const prev = S.pfLive[c.id];
+  const old = prev ? prev.vt : {};
+  const vt = {};
+  let views = 0;
+  let likes = 0;
+  let comments = 0;
+  for (const x of items) {
+    const st = x.statistics || {};
+    const raw = Number(st.viewCount || 0);
+    const cur = Array.isArray(old[x.id]) && Number.isFinite(old[x.id][0]) ? old[x.id] : null;
+    let top;
+    if (!cur || raw >= cur[0]) top = [raw, 0];
+    else if (!cur[1]) top = [cur[0], t];
+    else if (t - cur[1] >= TOP_RESET) top = [raw, 0];
+    else top = cur;
+    vt[x.id] = top;
+    views += top[0];
+    likes += Number(st.likeCount || 0);
+    comments += Number(st.commentCount || 0);
+  }
+  const cs = channelStats(it.statistics);
+  S.pfLive[c.id] = { t, views, subs: cs.subs, likes, comments, uploads: items.length, vt };
+  return true;
+}
+
+async function pollOthers() {
+  clearTimeout(S.pfTimer);
+  S.pfTimer = 0;
+  if (!S.cfg || S.chans.length < 2 || S.pfBusy) return;
+  if (document.hidden) {
+    S.pfDue = true;
+    return;
+  }
+  S.pfDue = false;
+  S.pfBusy = true;
+  const key = S.cfg.key;
+  let changed = false;
+  try {
+    for (const c of S.chans) {
+      if (!S.cfg || S.cfg.key !== key) break;
+      if (S.channel && c.id === S.channel.id) continue;
+      const L = S.pfLive[c.id];
+      if (L && Date.now() - L.t < PF_POLL - 15e3) continue;
+      try {
+        if (await pollChannel(c)) changed = true;
+      } catch (e) {
+        if (['quota', 'key', 'disabled', 'referrer', 'blocked'].includes(e.kind)) break;
+      }
+    }
+  } finally {
+    S.pfBusy = false;
+  }
+  if (changed) {
+    savePfLive();
+    if (S.total != null) renderPortfolio();
+  }
+  if (S.cfg && !S.pfTimer) S.pfTimer = setTimeout(pollOthers, PF_POLL);
+}
+
+function pfReading(c) {
+  const st = c.stats;
+  const cands = [];
+  if (st) cands.push({ t: c.updated || 0, views: st.views, subs: st.subs, likes: st.likes, comments: st.comments, uploads: st.uploads });
+  const L = S.pfLive[c.id];
+  if (L) cands.push(L);
+  if (!cands.length) return null;
+  const top = cands.reduce((a, b) => (b.t > a.t ? b : a));
+  const views = Math.max(...cands.filter(x => x.t >= top.t - TOP_RESET).map(x => x.views));
+  return { t: top.t, views, subs: top.subs, likes: top.likes, comments: top.comments, uploads: top.uploads };
+}
+
 function pfHoldings() {
-  const list = S.chans.filter(c => c.stats);
+  const list = S.chans.filter(c => c.stats || S.pfLive[c.id]);
   if (list.length < 2) return null;
   const fold = list.length > PF_SLOTS ? PF_SLOTS - 1 : PF_SLOTS;
   return list.map((c, i) => {
-    const st = c.stats;
-    const live = !!(S.channel && S.channel.id === c.id && S.total != null);
-    const v = live
-      ? { views: S.total, subs: S.channel.subs, likes: S.likes, comments: S.comments, uploads: S.videos.size }
-      : { views: st.views, subs: st.subs, likes: st.likes, comments: st.comments, uploads: st.uploads };
+    const st = c.stats || { base: null, prev: null, trend: [] };
+    const rd = pfReading(c);
+    const v = { views: rd.views, subs: rd.subs, likes: rd.likes, comments: rd.comments, uploads: rd.uploads };
     const b = st.base;
     v.day = b && b.views != null ? v.views - b.views : null;
-    const asOf = live ? Math.max(S.lastPoll || 0, c.updated) : c.updated;
+    const asOf = rd.t;
     const known = PF_KNOWN[slug(c.title)] || PF_KNOWN[slug(c.handle)];
     const slot = i < fold ? i + 1 : 0;
     return {
@@ -4150,7 +4080,7 @@ function pfHoldings() {
       partial: !b || asOf - b.t < PF_FULL_DAY,
       prevDay: b && st.prev && b.views != null ? b.views - st.prev.views : null,
       trend: st.trend,
-      updated: c.updated,
+      updated: asOf,
       current: !!(S.channel && S.channel.id === c.id)
     };
   });
@@ -4284,12 +4214,12 @@ function renderPortfolio() {
       pfChangeCell(x.v.day, x.base ? x.base.views : 0, x.partial, x.base ? x.base.t : 0),
       h('td', { class: x.v.subs == null ? 'num pf-x dim' : 'num pf-x' }, x.v.subs == null ? 'Hidden' : fmt(x.v.subs)),
       h('td', { class: 'num pf-x' }, x.v.likes == null ? '–' : fmt(x.v.likes)),
-      h('td', { class: 'pf-x pf-sp' }, sparkline(x.trend.concat(x.current && S.total != null ? [[Math.max(tEnd, S.lastPoll || 0), x.v.views]] : []), x.color, t0, Math.max(tEnd, S.lastPoll || 0))));
+      h('td', { class: 'pf-x pf-sp' }, sparkline(x.trend.concat(x.updated > (x.trend.length ? x.trend[x.trend.length - 1][0] : 0) ? [[x.updated, x.v.views]] : []), x.color, t0, tEnd)));
     return tr;
   }));
   const asOf = Math.max(...list.map(x => x.updated || 0));
-  const foot = [`Each bar splits one total across your channels. Recorder data from ${sinceText(asOf)}.`];
-  if (list.some(x => x.current) && S.cfg) foot.push('The channel you’re viewing updates live.');
+  const foot = [`Each bar splits one total across your channels, using each channel’s newest reading (latest ${sinceText(asOf)}).`];
+  if (S.cfg) foot.push(`The channel you’re viewing updates every ${S.cfg.interval < 60 ? S.cfg.interval + ' s' : S.cfg.interval / 60 + ' min'}, the others every 5 min.`);
   if (partial.length) foot.push(`${partial.map(x => x.title).join(', ')} ${partial.length === 1 ? 'has' : 'have'} been tracked for less than a day, so ${partial.length === 1 ? 'its' : 'their'} 24 h numbers cover less time.`);
   $('pfFoot').textContent = foot.join(' ');
   renderPfData();
@@ -4436,20 +4366,12 @@ function setRange(r) {
   renderData();
 }
 
-function setAge(a) {
-  S.age = AGES[a] ? a : '24h';
-  store.set('ytlive.age', S.age);
-  for (const b of $('ages').querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.age === S.age));
-  hideLaunchHover();
-  if (S.total != null) renderLaunch();
-}
-
 function fillIntervals(selected) {
   const sel = Math.max(5, Number(selected) || 30);
   const opts = INTERVALS.includes(sel) ? INTERVALS : [...INTERVALS, sel].sort((a, b) => a - b);
   const n = Math.max(1, Math.ceil(S.videos.size / 50));
   $('interval').replaceChildren(...opts.map(iv => {
-    const units = Math.round((86400 / iv) * n + (86400e3 / LIST_EVERY) * (1 + 2 * n) + 86400e3 / CHECK_EVERY + 86400e3 / Math.max(SUB_EVERY, iv * 1000));
+    const units = Math.round((86400 / iv) * n + (86400e3 / LIST_EVERY) * (1 + 2 * n) + 86400e3 / CHECK_EVERY + 86400e3 / Math.max(SUB_EVERY, iv * 1000)) + pfUnits();
     const label = (iv < 60 ? `${iv} s` : `${iv / 60} min`) + ` · ~${(units / 1000).toFixed(1)}K units/day` + (units > 10000 ? ' (over the 10K limit)' : '');
     return h('option', { value: String(iv) }, label);
   }));
@@ -4527,18 +4449,36 @@ function init() {
   S.pick = store.get('ytlive.pick', '');
   const savedRange = store.get('ytlive.range', 'all');
   S.range = RANGES[savedRange] ? savedRange : 'all';
-  const savedSort = store.get('ytlive.advsort', null);
-  if (savedSort && (savedSort.key === 'pub' || ADV_COLS.some(c => c.key === savedSort.key)) && [1, -1].includes(savedSort.dir)) S.advSort = savedSort;
-  const savedAge = store.get('ytlive.age', '24h');
-  S.age = AGES[savedAge] ? savedAge : '24h';
+  const savedSort = store.get('ytlive.vsort', null);
+  if (savedSort && (['title', 'pub'].includes(savedSort.key) || VCOLS.some(c => c.key === savedSort.key)) && [1, -1].includes(savedSort.dir)) S.vsort = savedSort;
+  S.pfLive = loadPfLive();
   for (const b of $('ranges').querySelectorAll('button')) {
     b.setAttribute('aria-pressed', String(b.dataset.range === S.range));
     b.addEventListener('click', () => setRange(b.dataset.range));
   }
-  for (const b of $('ages').querySelectorAll('button')) {
-    b.setAttribute('aria-pressed', String(b.dataset.age === S.age));
-    b.addEventListener('click', () => setAge(b.dataset.age));
-  }
+  $('upSearch').addEventListener('input', e => {
+    S.vq = e.target.value;
+    renderTable();
+  });
+  $('upMore').addEventListener('click', () => {
+    S.vall = !S.vall;
+    renderTable();
+  });
+  $('vHead').addEventListener('click', e => {
+    const b = e.target.closest('button[data-key]');
+    if (b) setVSort(b.dataset.key);
+  });
+  $('rows').addEventListener('click', e => {
+    if (e.target.closest('a')) return;
+    const tr = e.target.closest('tr.vrow');
+    if (tr) toggleVideo(tr.dataset.id);
+  });
+  $('rows').addEventListener('keydown', e => {
+    const tr = e.target.closest('tr.vrow');
+    if (!tr || e.target !== tr || (e.key !== 'Enter' && e.key !== ' ')) return;
+    e.preventDefault();
+    toggleVideo(tr.dataset.id);
+  });
   const savedHRange = store.get('ytlive.hrange', 'all');
   S.hrange = HR_MODES.includes(savedHRange) ? savedHRange : 'all';
   const savedDates = store.get('ytlive.hdates', null);
@@ -4619,24 +4559,6 @@ function init() {
   });
   $('chart').addEventListener('focus', () => {
     if (S.geom && $('chart').matches(':focus-visible')) showHover(S.geom.vis.length - 1);
-  });
-
-  wireChart('lchart', 'lsvg', onLaunchPointer, hideLaunchHover, e => {
-    if (!S.lgeom) return;
-    let i = S.lhoverOn ? S.lhoverIdx : SAMPLES;
-    if (e.key === 'ArrowLeft') i -= 1;
-    else if (e.key === 'ArrowRight') i += 1;
-    else if (e.key === 'Home') i = 0;
-    else if (e.key === 'End') i = SAMPLES;
-    else if (e.key === 'Escape') {
-      hideLaunchHover();
-      return;
-    } else return;
-    e.preventDefault();
-    showLaunchHover(i);
-  });
-  $('lchart').addEventListener('focus', () => {
-    if (S.lgeom && $('lchart').matches(':focus-visible')) showLaunchHover(SAMPLES);
   });
 
   wireChart('hchart', 'hsvg', onHourPointer, hideHourHover, e => {
@@ -4736,7 +4658,6 @@ function init() {
 
   for (const id of ['subsTile', 'likesTile', 'commentsTile']) $(id).addEventListener('animationend', () => $(id).classList.remove('bump'));
   $('dataDetails').addEventListener('toggle', renderData);
-  $('launchDetails').addEventListener('toggle', renderLaunchData);
   $('advDaily').addEventListener('toggle', () => renderAdvDaily(remoteFor() && remoteFor().analytics));
   window.addEventListener('pagehide', () => saveVL(true));
 
@@ -4748,13 +4669,11 @@ function init() {
       renderChart();
       renderMinutes();
       renderHourly();
-      renderLaunch();
     });
   });
   ro.observe($('chart'));
   ro.observe($('mchart'));
   ro.observe($('hchart'));
-  ro.observe($('lchart'));
   let pz = 0;
   new ResizeObserver(() => {
     cancelAnimationFrame(pz);
@@ -4770,6 +4689,7 @@ function init() {
     }
     if (S.cfg && !S.paused && !S.busy && S.nextAt && Date.now() >= S.nextAt - 1000) cycle(false);
     if (S.remoteDue) fetchRemote(false);
+    if (S.pfDue) pollOthers();
   });
 
   setInterval(renderStatus, 1000);
