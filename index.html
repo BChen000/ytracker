@@ -174,6 +174,11 @@ h2 .count { color: var(--text-2); font-weight: 500; font-size: 15px; }
 .ranges button:hover { color: var(--text); }
 .ranges button[aria-pressed="true"] { color: var(--text); box-shadow: inset 0 -2px 0 var(--text); }
 .hero-chart details.data { margin-top: 6px; }
+#live.home .ch-only { display: none !important; }
+#live:not(.home) .home-only { display: none !important; }
+.btn.link.back { display: inline-block; margin: 0 0 4px; padding: 0; font-size: 13px; color: var(--text-2); text-decoration: none; }
+.btn.link.back:hover { color: var(--text); }
+.pf .pf-top { display: none; }
 
 .pill { display: inline-block; padding: 4px 9px; border-radius: 8px; font-size: 13px; font-weight: 650; white-space: nowrap; }
 .pill.up { color: var(--good); background: color-mix(in srgb, var(--good) 14%, transparent); }
@@ -403,6 +408,7 @@ tr.bump td { animation: flash 1.6s ease-out; }
     <div class="who">
       <img id="avatar" class="avatar" alt="" hidden>
       <div class="who-text">
+        <button id="homeLink" class="btn link back" type="button" hidden>← Portfolio</button>
         <div class="name-row"><h1 id="title">Live view total</h1><span id="qTick" class="tick" hidden></span></div>
         <p id="subtitle" class="sub">Sum of every public upload's view count, refreshed live</p>
       </div>
@@ -508,7 +514,7 @@ tr.bump td { animation: flash 1.6s ease-out; }
         <p id="t1Sub" class="t-sub"></p>
       </div>
       <div class="tile">
-        <p class="t-label">YouTube's channel total</p>
+        <p id="t2Label" class="t-label">YouTube's channel total</p>
         <p id="t2Value" class="t-value">–</p>
         <p id="t2Sub" class="t-sub"></p>
       </div>
@@ -520,13 +526,13 @@ tr.bump td { animation: flash 1.6s ease-out; }
       </div>
     </section>
 
-    <section id="movers" class="card movers" aria-labelledby="mvTitle" hidden>
+    <section id="movers" class="card movers ch-only" aria-labelledby="mvTitle" hidden>
       <h2 id="mvTitle">Top movers <span class="count">· past 24 h</span></h2>
       <ol id="moverList" class="mv-list"></ol>
     </section>
 
-    <section id="pf" class="card pf" aria-labelledby="pfTitle" hidden>
-      <h2 id="pfTitle">Portfolio <span id="pfCount" class="count"></span></h2>
+    <section id="pf" class="card pf home-only" aria-labelledby="pfTitle" hidden>
+      <h2 id="pfTitle">Allocation <span id="pfCount" class="count"></span></h2>
       <p class="pf-top"><span id="pfTotal" class="pf-total"></span><span id="pfNoun" class="pf-noun"></span><span id="pfDelta" class="pf-delta"></span></p>
       <div id="pfKeys" class="legend pf-keys"></div>
       <div id="pfBars" class="pf-bars">
@@ -548,7 +554,7 @@ tr.bump td { animation: flash 1.6s ease-out; }
       </details>
     </section>
 
-    <section class="card chart-card min-card" aria-labelledby="mTitle">
+    <section class="card chart-card min-card ch-only" aria-labelledby="mTitle">
       <h2 id="mTitle">Views · Last 60 minutes</h2>
       <p id="msum" class="hsum"></p>
       <div id="mlegend" class="legend" hidden>
@@ -564,7 +570,7 @@ tr.bump td { animation: flash 1.6s ease-out; }
       <div id="mtop" class="mtop" hidden></div>
     </section>
 
-    <section class="card chart-card">
+    <section class="card chart-card ch-only">
       <h2 id="hTitle">Views per hour</h2>
     <div class="filters">
       <span id="hmLabel" class="f-label">Hourly</span>
@@ -647,7 +653,7 @@ tr.bump td { animation: flash 1.6s ease-out; }
       </details>
     </section>
 
-    <section class="card adv" aria-labelledby="advTitle">
+    <section class="card adv ch-only" aria-labelledby="advTitle">
       <h2 id="advTitle">Advanced stats <span id="advCount" class="count"></span></h2>
       <p id="advSrc" class="hsum"></p>
       <div id="advTiles" class="tiles adv-tiles" hidden></div>
@@ -658,7 +664,7 @@ tr.bump td { animation: flash 1.6s ease-out; }
       </details>
     </section>
 
-    <section class="card uploads" aria-labelledby="upTitle">
+    <section class="card uploads ch-only" aria-labelledby="upTitle">
       <div class="up-head">
         <h2 id="upTitle">Uploads <span id="upCount" class="count"></span></h2>
         <input id="upSearch" type="search" placeholder="Search uploads" aria-label="Search uploads by title" autocomplete="off" spellcheck="false">
@@ -932,7 +938,9 @@ const S = {
   remoteTimer: 0,
   rgen: 0,
   pf: null,
-  wsig: ''
+  wsig: '',
+  home: false,
+  pfSeries: null
 };
 
 class ApiError extends Error {
@@ -1439,6 +1447,8 @@ function prepIndex(d) {
     .filter(c => c && typeof c.id === 'string' && /^[\w-]+$/.test(c.id))
     .map(c => ({ id: c.id, title: String(c.title || c.id), handle: typeof c.handle === 'string' ? c.handle : '', updated: Number.isFinite(c.updated) ? c.updated : 0, stats: prepStats(c.stats) }));
   if (!list.length) throw new RemoteError('missing');
+  const pf = Array.isArray(d.portfolio) ? d.portfolio.filter(p => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1])).map(p => [p[0], p[1]]).sort((a, b) => a[0] - b[0]) : [];
+  list.pf = pf.length > 1 ? pf : null;
   return list;
 }
 
@@ -1723,7 +1733,10 @@ async function fetchRemote(manual) {
   if (gen !== S.rgen) return;
   S.remoteBusy = false;
   S.remoteErr = err;
-  if (list) S.chans = list;
+  if (list) {
+    S.chans = list;
+    S.pfSeries = list.pf || null;
+  }
   if (R) {
     S.remote = R;
     S.dataGen += 1;
@@ -1749,7 +1762,7 @@ async function fetchRemote(manual) {
   }
   renderChanPick();
   renderStatus();
-  if (S.total != null) renderPortfolio();
+  if (S.total != null) renderPfAll();
   pfKick();
 }
 
@@ -2045,6 +2058,7 @@ function hideAlert() {
 
 function renderMerged() {
   renderHead();
+  if (homeList()) renderHero();
   renderTiles();
   renderPortfolio();
   renderMinutes();
@@ -2111,8 +2125,133 @@ function renderMovers() {
   }));
 }
 
+function homeList() {
+  if (!S.home) return null;
+  const list = pfHoldings();
+  return list && list.length > 1 ? list : null;
+}
+
+function homeTotal(list) {
+  return list.reduce((a, x) => a + (x.v.views || 0), 0);
+}
+
+function heroTotal() {
+  const list = homeList();
+  return list ? homeTotal(list) : S.total;
+}
+
+function trendSum(list) {
+  const per = list.map(x => x.trend).filter(tr => tr.length);
+  if (!per.length) return [];
+  const times = [...new Set(per.flat().map(p => p[0]))].sort((a, b) => a - b);
+  return times.map(t => [t, per.reduce((a, tr) => a + lineAt(tr, t), 0)]);
+}
+
+function homeSeries(list) {
+  const pts = S.pfSeries ? S.pfSeries.slice() : trendSum(list);
+  const t = Math.max(...list.map(x => x.updated || 0));
+  const total = homeTotal(list);
+  if (t && pts.length && t === pts[pts.length - 1][0]) pts[pts.length - 1] = [t, total];
+  else if (t && (!pts.length || t > pts[pts.length - 1][0])) pts.push([t, total]);
+  return pts;
+}
+
+function renderPfAll() {
+  renderPortfolio();
+  if (homeList()) {
+    renderHero();
+    renderTiles();
+    renderChart();
+  }
+}
+
+function setUrlChannel(c) {
+  try {
+    const u = new URL(location.href);
+    if (c) u.searchParams.set('c', c);
+    else u.searchParams.delete('c');
+    history.replaceState(null, '', u);
+  } catch {}
+}
+
+function viewChanged() {
+  hideHover();
+  S.wsig = '';
+  if (S.total != null) renderAll();
+  else if (homeList() || S.channel) renderHead();
+  window.scrollTo({ top: 0, behavior: 'auto' });
+}
+
+function goHome() {
+  if (S.home && homeList()) return;
+  S.home = true;
+  setUrlChannel('');
+  viewChanged();
+}
+
+function openChannel(id) {
+  S.home = false;
+  const cur = S.cfg ? (S.channel ? S.channel.id : '') : S.remote ? S.remote.channel.id : '';
+  if (id && id !== cur) {
+    pickChannel(id);
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    return;
+  }
+  const c = chanOptions().find(x => x.id === id);
+  setUrlChannel(c ? slug(c.handle) || id : '');
+  viewChanged();
+}
+
+function renderHomeTiles(list) {
+  const total = homeTotal(list);
+  const delta = k => {
+    const xs = list.filter(x => x.base && x.base[k] != null && x.v[k] != null);
+    return xs.length ? xs.reduce((a, x) => a + x.v[k] - x.base[k], 0) : null;
+  };
+  for (const k of ['subs', 'likes', 'comments']) {
+    const now = list.reduce((a, x) => a + (x.v[k] || 0), 0);
+    const d = delta(k);
+    $(k + 'Value').textContent = fmt(now);
+    const parts = [];
+    if (d != null) parts.push(`${d === 0 ? '+0' : signed(d)} in 24 h`);
+    if (k !== 'subs' && total > 0) parts.push(`${((now / total) * 100).toFixed(1)} per 100 views`);
+    $(k + 'Sub').textContent = parts.join(' · ');
+  }
+  const pts = homeSeries(list);
+  const last = pts[pts.length - 1];
+  const d60 = last && pts.length > 1 && last[0] - pts[0][0] >= 3540e3 ? Math.round(last[1] - lineAt(pts, last[0] - 3600e3)) : null;
+  $('t1Label').textContent = 'Views, last 60 min';
+  $('t1Value').textContent = d60 == null ? '–' : signed(d60);
+  $('t1Value').className = 't-value' + (d60 > 0 ? ' good' : '');
+  $('t1Sub').textContent = d60 == null ? 'Collecting…' : '≈ ' + rate(d60, 3600e3);
+  const up = list.reduce((a, x) => a + (x.v.uploads || 0), 0);
+  const ud = delta('uploads');
+  $('t2Label').textContent = 'Uploads';
+  $('t2Value').textContent = fmt(up);
+  $('t2Sub').textContent = ud == null ? '' : `${ud === 0 ? '+0' : signed(ud)} in 24 h`;
+  const withDay = list.filter(x => x.v.day != null);
+  const day = withDay.reduce((a, x) => a + x.v.day, 0);
+  $('t3Label').textContent = 'Views, last 24 hours';
+  $('t3Value').textContent = withDay.length ? signed(day) : '–';
+  $('t3Value').className = 't-value' + (day > 0 ? ' good' : '');
+  $('t3Sub').textContent = withDay.length ? '≈ ' + rate(day, 86400e3) : '';
+}
+
 function renderHead() {
   const c = S.channel;
+  const home = homeList();
+  const all = pfHoldings();
+  $('live').classList.toggle('home', !!home);
+  $('homeLink').hidden = !!home || !all || all.length < 2;
+  if (home) {
+    $('title').textContent = 'Portfolio';
+    $('qTick').hidden = true;
+    $('subtitle').textContent = `${home.length} channels combined · ` + (S.cfg ? 'live' : 'recorded about every 10 minutes');
+    $('avatar').hidden = true;
+    renderNotes();
+    renderChanPick();
+    return;
+  }
   $('title').textContent = c.title;
   $('subtitle').textContent = S.cfg
     ? `Live view total · refreshes every ${S.cfg.interval < 60 ? S.cfg.interval + ' s' : S.cfg.interval / 60 + ' min'}` + (remoteFor() ? ' · with recorder history' : '')
@@ -2132,6 +2271,14 @@ function renderHead() {
 }
 
 function renderHero(before) {
+  const home = homeList();
+  if (home) {
+    const tot = homeTotal(home);
+    animateTotal(tot);
+    $('heroLabel').textContent = `total views across ${home.length} channels · ${fmt(home.reduce((a, x) => a + (x.v.uploads || 0), 0))} uploads`;
+    document.title = `${fmt(tot)} views · Portfolio`;
+    return;
+  }
   animateTotal(S.total);
   const n = S.videos.size;
   $('heroLabel').textContent = `all-time views across ${fmt(n)} public upload${n === 1 ? '' : 's'}`;
@@ -2259,6 +2406,12 @@ function renderEngagement() {
 }
 
 function renderTiles() {
+  const home = homeList();
+  if (home) {
+    renderHomeTiles(home);
+    return;
+  }
+  $('t2Label').textContent = "YouTube's channel total";
   renderEngagement();
   let w = windowDelta(3600e3, 'Views, last 60 min');
   const m = lastHour();
@@ -2587,9 +2740,10 @@ function renderTable() {
 }
 
 function chartData() {
-  const pts = effHist().slice();
-  if (S.total != null && S.lastPoll && (!pts.length || S.lastPoll > pts[pts.length - 1][0])) pts.push([S.lastPoll, S.total]);
-  const t1 = S.lastPoll || Date.now();
+  const home = homeList();
+  const pts = home ? homeSeries(home) : effHist().slice();
+  if (!home && S.total != null && S.lastPoll && (!pts.length || S.lastPoll > pts[pts.length - 1][0])) pts.push([S.lastPoll, S.total]);
+  const t1 = home ? (pts.length ? pts[pts.length - 1][0] : Date.now()) : S.lastPoll || Date.now();
   const span = RANGES[S.range] || Infinity;
   let t0 = span === Infinity ? (pts.length ? pts[0][0] : t1) : t1 - span;
   if (t1 - t0 < 60e3) t0 = t1 - 60e3;
@@ -2847,10 +3001,11 @@ function hideHover() {
   if (S.hv) S.hv.g.setAttribute('visibility', 'hidden');
   $('tip').hidden = true;
   if (S.geom && S.geom.vrects) for (const r of S.geom.vrects) if (r) r.classList.remove('on');
-  if (was && S.total != null) {
+  const tot = heroTotal();
+  if (was && tot != null) {
     cancelAnimationFrame(S.raf);
-    S.shown = S.total;
-    $('total').textContent = fmt(S.total);
+    S.shown = tot;
+    $('total').textContent = fmt(tot);
   }
   renderQuote();
 }
@@ -4257,7 +4412,7 @@ async function pollOthers() {
   }
   if (changed) {
     savePfLive();
-    if (S.total != null) renderPortfolio();
+    if (S.total != null) renderPfAll();
   }
   if (S.cfg && !S.pfTimer) S.pfTimer = setTimeout(pollOthers, PF_POLL);
 }
@@ -4370,12 +4525,24 @@ function renderWatch() {
     S.wsig = '';
     return;
   }
-  const sig = JSON.stringify(list.map(x => [x.id, x.title, x.ticker, x.v.views, x.v.day, x.base ? x.base.views : 0, x.trend.length, x.updated, x.current]));
+  const home = !!homeList();
+  const series = homeSeries(list);
+  const sig = JSON.stringify([home, series.length, S.pfSeries ? S.pfSeries.length : 0, list.map(x => [x.id, x.title, x.ticker, x.v.views, x.v.day, x.base ? x.base.views : 0, x.trend.length, x.updated, x.current])]);
   if (S.wsig === sig) return;
   S.wsig = sig;
   const tEnd = Math.max(...list.map(x => x.updated || 0), Date.now() - 60e3);
   const t0 = tEnd - 7 * 86400e3;
-  $('watchList').replaceChildren(...list.map(x => {
+  const total = homeTotal(list);
+  const withDay = list.filter(x => x.v.day != null);
+  const day = withDay.reduce((a, x) => a + x.v.day, 0);
+  const pdir = day > 0 ? 'up' : day < 0 ? 'down' : 'flat';
+  const ppct = !withDay.length ? '–' : total - day > 0 ? (day >= 0 ? '+' : '−') + pctText(Math.abs(day / (total - day)) * 100) : day === 0 ? '+0' : signed(day);
+  const allBtn = h('button', { class: 'w-item w-all', type: 'button', 'data-home': '1', title: withDay.length ? `All channels · ${day === 0 ? '+0' : signed(day)} views in 24 h` : 'All channels' },
+    h('span', { class: 'w-name' }, h('b', null, 'Portfolio'), h('span', null, `${list.length} channels`)),
+    sparkline(series, pdir === 'up' ? 'var(--good)' : pdir === 'down' ? 'var(--bad)' : 'var(--flat)', t0, tEnd, 64, 28),
+    h('span', { class: 'w-num' }, h('b', null, fmt(total)), h('span', { class: 'pill ' + (withDay.length ? pdir : 'flat') }, ppct)));
+  if (home) allBtn.setAttribute('aria-current', 'true');
+  $('watchList').replaceChildren(allBtn, ...list.map(x => {
     const d = x.v.day;
     const base = x.base ? x.base.views : 0;
     const dir = d > 0 ? 'up' : d < 0 ? 'down' : 'flat';
@@ -4386,7 +4553,7 @@ function renderWatch() {
       h('span', { class: 'w-name' }, h('b', null, x.ticker), h('span', null, x.title)),
       sparkline(pts, color, t0, tEnd, 64, 28),
       h('span', { class: 'w-num' }, h('b', null, fmt(x.v.views)), h('span', { class: 'pill ' + (d == null ? 'flat' : dir) }, pct)));
-    if (x.current) btn.setAttribute('aria-current', 'true');
+    if (x.current && !home) btn.setAttribute('aria-current', 'true');
     return btn;
   }));
 }
@@ -4456,8 +4623,9 @@ function renderPortfolio() {
   $('pfRows').replaceChildren(...list.map(x => {
     const sw = h('span', { class: 'sw' });
     sw.style.background = x.color;
-    const name = x.current ? h('strong', { title: x.title }, x.title) : h('button', { class: 'btn link', type: 'button', 'data-id': x.id, title: `Open ${x.title}` }, x.title);
-    const tr = h('tr', x.current ? { class: 'cur', 'aria-current': 'true' } : null,
+    const here = x.current && !homeList();
+    const name = here ? h('strong', { title: x.title }, x.title) : h('button', { class: 'btn link', type: 'button', 'data-id': x.id, title: `Open ${x.title}` }, x.title);
+    const tr = h('tr', here ? { class: 'cur', 'aria-current': 'true' } : null,
       h('td', null, h('div', { class: 'pf-hold' }, sw, h('span', { class: 'tick' }, x.ticker), h('span', { class: 'pf-name' }, name, x.sector ? h('span', { class: 'pf-sector' }, x.sector) : ''))),
       h('td', { class: 'num' }, fmt(x.v.views)),
       pfChangeCell(x.v.day, x.base ? x.base.views : 0, x.partial, x.base ? x.base.t : 0),
@@ -4579,7 +4747,7 @@ function renderStatus() {
     $('statusLink').hidden = true;
     $('refresh').textContent = S.paused ? 'Try again' : 'Refresh now';
     $('refresh').disabled = S.busy;
-    $('t3Value').textContent = fmt(unitsToday());
+    if (!homeList()) $('t3Value').textContent = fmt(unitsToday());
     return;
   }
   if (!siteUrl()) return;
@@ -4693,6 +4861,11 @@ function onSubmit(e) {
 }
 
 function init() {
+  let wantC = '';
+  try {
+    wantC = new URLSearchParams(location.search).get('c') || '';
+  } catch {}
+  S.home = !wantC;
   S.cfg = loadCfg();
   S.site = loadSite();
   S.pick = store.get('ytlive.pick', '');
@@ -4752,10 +4925,12 @@ function init() {
   $('exportBtn').addEventListener('click', exportSeed);
   $('chanPick').addEventListener('change', e => pickChannel(e.target.value));
   $('watchList').addEventListener('click', e => {
-    const b = e.target.closest('button[data-id]');
+    const b = e.target.closest('button[data-id], button[data-home]');
     if (!b || b.getAttribute('aria-current') === 'true') return;
-    pickChannel(b.dataset.id);
+    if (b.dataset.home) goHome();
+    else openChannel(b.dataset.id);
   });
+  $('homeLink').addEventListener('click', goHome);
 
   $('reveal').addEventListener('click', () => {
     const show = $('key').type === 'password';
@@ -4899,8 +5074,7 @@ function init() {
   $('pfRows').addEventListener('click', e => {
     const b = e.target.closest('button[data-id]');
     if (!b) return;
-    pickChannel(b.dataset.id);
-    window.scrollTo({ top: 0, behavior: calm() ? 'auto' : 'smooth' });
+    openChannel(b.dataset.id);
   });
   $('importBtn').addEventListener('click', () => importStudio($('importText').value));
   $('importClear').addEventListener('click', clearStudioHours);

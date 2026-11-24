@@ -35,6 +35,7 @@ ANALYTICS_EVERY = 3 * 3_600_000
 ANALYTICS_RETRY = 3_600_000
 DAY_MS = 86_400_000
 TREND_STEP = 2 * 3_600_000
+VLC_MAX = 3_000
 METRICS = ['views', 'engagedViews', 'estimatedMinutesWatched', 'averageViewDuration', 'averageViewPercentage',
            'likes', 'comments', 'shares', 'subscribersGained', 'subscribersLost']
 TABLE_COLS = {
@@ -276,6 +277,15 @@ def thin(samples):
     return sorted(by_hour.values()) + [s for s in samples if s[0] >= cutoff]
 
 
+def thin_changes(pts):
+    cutoff = NOW - KEEP_FULL
+    slots = {}
+    for p in pts:
+        if p[0] < cutoff:
+            slots[p[0] // TREND_STEP] = p
+    return sorted(slots.values()) + [p for p in pts if p[0] >= cutoff]
+
+
 def load(path):
     if not os.path.exists(path) or os.path.getsize(path) == 0:
         return {}
@@ -327,6 +337,13 @@ def load_state(data):
         good = [[int(s[0]), {k: v for k, v in s[1].items() if num(v)}] for s in snaps if isinstance(s, list) and len(s) == 2 and num(s[0]) and isinstance(s[1], dict)] if isinstance(snaps, list) else []
         if good:
             vstats[vid] = good
+    vlc = {}
+    src_all = data.get('vlc')
+    for vid, pts in (src_all if isinstance(src_all, dict) else {}).items():
+        good = [[int(p[0]), p[1] if num(p[1]) else None, p[2] if num(p[2]) else None] for p in pts if isinstance(p, list) and len(p) == 3 and num(p[0])] if isinstance(pts, list) else []
+        if good:
+            vlc[vid] = sorted(good)
+    stat_hist = sorted([int(p[0]), p[1]] for p in data.get('statHist') or [] if isinstance(p, list) and len(p) == 2 and num(p[0]) and num(p[1]))
     seen = data.get('vstatsSeen')
     vtotal = [[int(s[0]), {k: v for k, v in s[1].items() if num(v)}] for s in data.get('vtotal') or [] if isinstance(s, list) and len(s) == 2 and num(s[0]) and isinstance(s[1], dict)]
     return {
@@ -340,6 +357,8 @@ def load_state(data):
         'vtotal': vtotal,
         'vstats_seen': {k: int(v) for k, v in seen.items() if num(v)} if isinstance(seen, dict) else {},
         'analytics': data.get('analytics') if isinstance(data.get('analytics'), dict) else None,
+        'vlc': vlc,
+        'stat_hist': stat_hist,
     }
 
 
@@ -734,6 +753,11 @@ def record_channel(query, store, seeds):
         likes += like or 0
         comments += comment or 0
         published[vid] = pub
+        ev = state['vlc'].get(vid) or []
+        if (like is not None or comment is not None) and (not ev or (NOW > ev[-1][0] and (ev[-1][1] != like or ev[-1][2] != comment))):
+            ev.append([NOW, like, comment])
+        if ev:
+            state['vlc'][vid] = ev
         if inc is None and views and Hc['last'] is not None:
             gains.append((pub if pub and NOW - pub <= BACKFILL_MAX else Hc['last'][0], views))
         elif inc and t0 is not None:
@@ -750,6 +774,10 @@ def record_channel(query, store, seeds):
         track_hours(H, [[pub + int(p[0]) * 1000, p[1]] for p in pts or [] if isinstance(p, list) and len(p) >= 2 and num(p[0]) and num(p[1])], views, pub)
         stream[vid] = track_stream(stream.get(vid), views)
     subs = None if st.get('hiddenSubscriberCount') else (int(st['subscriberCount']) if 'subscriberCount' in st else None)
+    stat_total = int(st.get('viewCount', 0))
+    sh = state['stat_hist']
+    if 'viewCount' in st and (not sh or (NOW > sh[-1][0] and sh[-1][1] != stat_total)):
+        sh.append([NOW, stat_total])
 
     if Hc['last'] is not None:
         for t0, inc in gains:
@@ -807,7 +835,7 @@ def record_channel(query, store, seeds):
         'updated': NOW,
         'channel': {'id': c['id'], 'title': title, 'avatar': avatar, 'handle': handle, 'uploads': uploads},
         'latest': {'t': NOW, 'total': total, 'subs': subs, 'hiddenSubs': bool(st.get('hiddenSubscriberCount')),
-                   'statTotal': int(st.get('viewCount', 0)), 'likes': likes, 'comments': comments, 'videos': rows},
+                   'statTotal': stat_total, 'likes': likes, 'comments': comments, 'videos': rows},
         'samples': samples,
         'hourly': {k: {'first': H['first'], 'last': H['last'],
                        'buckets': [[b[0], round2(b[1]), round2(b[2])] for _, b in sorted(H['buckets'].items())]}
@@ -822,6 +850,8 @@ def record_channel(query, store, seeds):
         'vstats': {vid: snaps for vid, snaps in state['vstats'].items() if vid in published},
         'vstatsSeen': state['vstats_seen'],
         'vtotal': state['vtotal'],
+        'vlc': {vid: thin_changes(state['vlc'][vid])[-VLC_MAX:] for vid in published if vid in state['vlc']},
+        'statHist': thin_changes(state['stat_hist']),
     }
     if analytics:
         out['analytics'] = analytics
@@ -829,6 +859,33 @@ def record_channel(query, store, seeds):
     print(f'{title}: {total:,} views, {subs if subs is not None else "hidden"} subscribers, {len(rows)} uploads.')
     stats = channel_summary(samples, published, {'views': total, 'subs': subs, 'likes': likes, 'comments': comments, 'uploads': len(rows)})
     return {'id': c['id'], 'title': title, 'avatar': avatar, 'handle': handle, 'q': query, 'updated': NOW, 'stats': stats}
+
+
+def interp(pts, t):
+    i = bisect.bisect_right(pts, (t, float('inf')))
+    if i == 0:
+        return pts[0][1]
+    if i == len(pts):
+        return pts[-1][1]
+    (ta, va), (tb, vb) = pts[i - 1], pts[i]
+    return va + (vb - va) * (t - ta) / (tb - ta) if tb > ta else vb
+
+
+def portfolio_series(store, ids):
+    per = []
+    for cid in ids:
+        try:
+            data = load(os.path.join(store, 'data', cid + '.json'))
+        except (ValueError, OSError):
+            continue
+        pts = sorted({int(x[0]): x[1] for x in data.get('samples') or [] if isinstance(x, list) and len(x) >= 2 and num(x[0]) and num(x[1])}.items())
+        if pts:
+            per.append(pts)
+    if not per:
+        return []
+    cutoff = NOW - KEEP_FULL
+    times = sorted({t if t >= cutoff else hour_floor(t) for pts in per for t, _ in pts})
+    return [[t, round(sum(interp(pts, t) for pts in per))] for t in times]
 
 
 def main():
@@ -860,7 +917,7 @@ def main():
         if e['id'] not in seen:
             seen.add(e['id'])
             channels.append(e)
-    write(index_path, {'v': 1, 'updated': NOW, 'channels': channels})
+    write(index_path, {'v': 1, 'updated': NOW, 'channels': channels, 'portfolio': portfolio_series(store, [c['id'] for c in channels])})
 
 
 if __name__ == '__main__':
